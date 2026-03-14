@@ -1,0 +1,80 @@
+name: Build
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ─────────────────────────────────────────
+  # server
+  # ─────────────────────────────────────────
+  build-server:
+    name: Build server
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (tsc)
+        run: npm run build
+
+  # ─────────────────────────────────────────
+  # pc-client
+  # ─────────────────────────────────────────
+  build-pc-client:
+    name: Build pc-client
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pc-client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: pc-client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (tsc + vite)
+        run: npm run build
+
+  # ─────────────────────────────────────────
+  # mobile-client
+  # ─────────────────────────────────────────
+  build-mobile-client:
+    name: Build mobile-client
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile-client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile-client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (tsc + vite)
+        run: npm run build

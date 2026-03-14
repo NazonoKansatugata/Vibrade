@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 ゲーム仕様について話し合いたい
+    url: https://github.com/issues  # ← Discussions を有効化したらURLを変更
+    about: Issue ではなく Discussion で話し合いましょう

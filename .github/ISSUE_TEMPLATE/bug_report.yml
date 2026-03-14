@@ -1,0 +1,75 @@
+name: "🐛 バグ報告"
+description: 不具合・予期しない動作を報告する
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        バグ報告ありがとうございます。再現に必要な情報をできるだけ詳しく記入してください。
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: 発生箇所
+      description: バグが発生しているパッケージを選んでください
+      options:
+        - server
+        - pc-client
+        - mobile-client
+        - 複数 / 横断
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: バグの概要
+      description: 何が起きているか簡潔に説明してください
+      placeholder: 例）ベイが画面外に飛び出したまま戻ってこない
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      description: バグを再現するための操作手順を書いてください
+      value: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待する動作
+      placeholder: 例）衝突後にベイがフィールド内で跳ね返る
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 実際の動作
+      placeholder: 例）ベイが x=-9999 に飛んでいきそのまま消える
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 環境情報
+      value: |
+        - OS:
+        - ブラウザ / Node.js:
+        - デバイス (スマホの場合):
+        - ブランチ / コミット:
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: ログ・スクリーンショット
+      description: コンソールエラーや画面キャプチャがあれば貼り付けてください
+      render: shell

@@ -1,0 +1,11 @@
+services:
+  server:
+    build:
+      context: ../server
+      dockerfile: ../docker/Dockerfile.server
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
