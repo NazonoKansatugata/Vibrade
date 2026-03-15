@@ -2,15 +2,21 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useGameSocket } from '../hooks/useGameSocket'
 import GameCanvas from '../components/GameCanvas'
 import GameStatus from '../components/GameStatus'
+import { normalizeServerGameState } from '../game/normalizeServerGameState'
 import { useDemoGameState } from '../hooks/useDemoGameState'
 import '../styles/game.css'
 
 const Game = () => {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
-  const { gameState } = useGameSocket()
+  const { gameState: socketGameState, players } = useGameSocket()
   const resolvedRoomId = roomId ?? ''
-  const gameState = useDemoGameState(resolvedRoomId)
+  const demoGameState = useDemoGameState(resolvedRoomId)
+  const normalizedSocketGameState =
+    socketGameState && socketGameState.roomId === resolvedRoomId
+      ? normalizeServerGameState(socketGameState, players)
+      : null
+  const gameState = normalizedSocketGameState ?? demoGameState
 
   return (
     <div className="game-page">
@@ -25,15 +31,8 @@ const Game = () => {
         </button>
       </aside>
 
-      <main className="game-page__canvas" id="phaser-container">
-        {/* Placeholder for Phaser */}
-        <div className="p-8 text-white/50 space-y-4">
-          <h2 className="text-2xl font-bold">Phaser Game Canvas Placeholder</h2>
-          <p>Live GameState Stream:</p>
-          <pre className="bg-black/50 p-4 rounded text-xs font-mono max-h-96 overflow-auto">
-            {JSON.stringify(gameState, null, 2)}
-          </pre>
-        </div>
+      <main className="game-page__canvas">
+        <GameCanvas roomId={resolvedRoomId} gameState={gameState} />
       </main>
     </div>
   )

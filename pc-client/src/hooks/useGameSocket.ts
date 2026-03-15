@@ -3,6 +3,16 @@ import { gameSocket } from '../socket/gameSocket';
 import { ServerEvents } from '../socket/events';
 import type { Player } from '../types';
 
+interface PlayerListPayload {
+  roomId: string;
+  players: Player[];
+}
+
+interface SocketErrorPayload {
+  code: string;
+  message: string;
+}
+
 export interface GameStateData {
   roomId: string;
   isGameActive: boolean;
@@ -22,7 +32,7 @@ export const useGameSocket = () => {
   const [roomId, setRoomId] = useState<string | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [gameState, setGameState] = useState<GameStateData | null>(null);
-  const [error, setError] = useState<{code: string, message: string} | null>(null);
+  const [error, setError] = useState<SocketErrorPayload | null>(null);
 
   useEffect(() => {
     const socket = gameSocket.connect();
@@ -34,7 +44,7 @@ export const useGameSocket = () => {
       setRoomId(data.roomId);
     };
 
-    const flexPlayerType = (data: { roomId: string, players: any[] }) => {
+    const flexPlayerType = (data: PlayerListPayload) => {
       setPlayers(data.players);
     };
 
@@ -42,7 +52,7 @@ export const useGameSocket = () => {
       setGameState(state);
     };
 
-    const onError = (err: any) => {
+    const onError = (err: SocketErrorPayload) => {
       setError(err);
       console.error('Socket Error:', err);
     };
