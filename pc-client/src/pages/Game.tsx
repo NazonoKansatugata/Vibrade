@@ -1,17 +1,21 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useGameSocket } from '../hooks/useGameSocket'
+import GameCanvas from '../components/GameCanvas'
 import GameStatus from '../components/GameStatus'
+import { useDemoGameState } from '../hooks/useDemoGameState'
 import '../styles/game.css'
 
 const Game = () => {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
   const { gameState } = useGameSocket()
+  const resolvedRoomId = roomId ?? ''
+  const gameState = useDemoGameState(resolvedRoomId)
 
   return (
     <div className="game-page">
       <aside className="game-page__sidebar">
-        <GameStatus roomId={roomId ?? ''} />
+        <GameStatus roomId={resolvedRoomId} gameState={gameState} />
 
         <button
           className="btn btn--secondary game-page__exit"
