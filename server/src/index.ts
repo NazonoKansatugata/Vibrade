@@ -13,7 +13,7 @@ const httpServer = createServer(app);
 // Allow connection from any origin (Mobile dev server, PC dev server)
 const io = new Server(httpServer, {
   cors: {
-    origin: '*',
+    origin: process.env.CORS_ORIGIN || '*',
     methods: ['GET', 'POST']
   }
 });

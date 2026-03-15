@@ -54,6 +54,12 @@ export function registerSocketHandlers(io: Server) {
         return;
       }
 
+      const game = gameManager.getGame(roomId);
+      if (game && game.status !== 'waiting') {
+        socket.emit(ServerEvents.ERROR, { code: 'GAME_ALREADY_STARTED', message: 'This game has already started.' });
+        return;
+      }
+
       // Add player to room state
       const result = roomManager.addPlayer(roomId, socket.id, playerName);
       if (!result) {
@@ -87,6 +93,8 @@ export function registerSocketHandlers(io: Server) {
         if (bey) {
            bey.spinPower += (power * 100);
            console.log(`[Launch Validated] Player ${socket.id} launched with power ${power}. Spin: ${bey.spinPower}`);
+        } else {
+           socket.emit(ServerEvents.ERROR, { code: 'INVALID_STATE', message: 'You do not have an active beyblade in this game.' });
         }
       }
     });
@@ -109,6 +117,9 @@ export function registerSocketHandlers(io: Server) {
       const removeResult = roomManager.removePlayer(socket.id);
       if (removeResult) {
         console.log(`[Player Left] ID: ${socket.id} left Room: ${removeResult.roomId}`);
+        // Remove from physics engine so they don't become ghost beys
+        gameManager.removeBey(removeResult.roomId, socket.id);
+
         // Notify remaining players and host
         io.to(removeResult.roomId).emit(ServerEvents.PLAYER_LIST, {
           roomId: removeResult.roomId,

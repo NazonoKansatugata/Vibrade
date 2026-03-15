@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { ClientEvents } from './events';
 
 // Note: In a real environment, the URL might come from env vars.
 // During local dev across devices, you might need to connect to the explicit PC IP address.
@@ -34,12 +35,28 @@ class ControlSocket {
   joinRoom(roomId: string, playerName: string) {
     if (!this.socket) this.connect();
     this.currentRoomId = roomId;
-    this.socket?.emit('joinRoom', { roomId, playerName });
+    this.socket?.emit(ClientEvents.JOIN_ROOM, { roomId, playerName });
   }
 
   sendInput(tiltX: number, tiltY: number, shakePower: number) {
     if (!this.socket || !this.socket.connected) return;
-    this.socket.emit('playerInput', { tiltX, tiltY, shakePower });
+    
+    // In our new architecture, tilt and launch are separate events.
+    // Send continuous tilt
+    this.socket.emit(ClientEvents.CONTROL_INPUT, { 
+      tiltX, 
+      tiltY, 
+      timestamp: Date.now() 
+    });
+
+    // Send launch explicitly if shakePower > 0
+    if (shakePower > 0) {
+      this.socket.emit(ClientEvents.LAUNCH_BEY, {
+        roomId: this.currentRoomId,
+        power: shakePower,
+        timestamp: Date.now()
+      });
+    }
   }
 
   on(event: string, callback: (...args: unknown[]) => void) {

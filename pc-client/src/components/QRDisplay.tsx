@@ -6,13 +6,24 @@ interface QRDisplayProps {
   serverUrl?: string
 }
 
-// 本番 URL をデフォルトとする。ローカル開発時は .env.local に
-// VITE_MOBILE_URL=http://localhost:5173 を設定して上書きすること
-const BASE_URL = import.meta.env.VITE_MOBILE_URL ?? 'https://vibrade-mobile.vercel.app'
+// 本番 URL をデフォルトとする。ローカル環境の場合は location.hostname を使う
+const getBaseUrl = () => {
+  if (import.meta.env.VITE_MOBILE_URL) {
+    return import.meta.env.VITE_MOBILE_URL;
+  }
+  // If running locally, point to the dev server port of the mobile client (5174)
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    return `http://${window.location.hostname}:5174`;
+  }
+  return 'https://vibrade-mobile.vercel.app';
+}
 
-const QRDisplay = ({ roomId, serverUrl = BASE_URL }: QRDisplayProps) => {
+const QRDisplay = ({ roomId }: QRDisplayProps) => {
   const qrRef = useRef<HTMLDivElement>(null)
 
+  const serverUrl = getBaseUrl()
+  const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+  
   // スマホのデフォルト QR リーダーがブラウザで開く URL
   const joinUrl = `${serverUrl}/join?room=${roomId}`
 
@@ -43,9 +54,20 @@ const QRDisplay = ({ roomId, serverUrl = BASE_URL }: QRDisplayProps) => {
           <strong>ルームID:</strong>{' '}
           <span className="qr-display__room-id">{roomId}</span>
         </p>
-        <p className="qr-display__hint">
-          📱 スマホのカメラでこの QR を読み取ってください
-        </p>
+
+        {isLocalhost ? (
+          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-xs">
+            <p>⚠️ <strong>ローカルテスト時の注意</strong></p>
+            <p className="mt-1">
+              現在 <code>localhost</code> で開かれているため、スマホからQRコードを読み取っても正しくアクセスできません。<br/>
+              PCのブラウザで <code>http://&lt;PCのIPアドレス&gt;:5173</code> を開き直すと、スマホ用の正しいQRコードが生成されます。
+            </p>
+          </div>
+        ) : (
+          <p className="qr-display__hint">
+            📱 スマホのカメラでこの QR を読み取ってください
+          </p>
+        )}
       </div>
 
       <button className="btn btn--secondary" onClick={handleDownload}>

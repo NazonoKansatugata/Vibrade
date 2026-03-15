@@ -69,6 +69,13 @@ export class GameManager {
     };
   }
 
+  removeBey(roomId: string, playerId: string) {
+    const game = this.games[roomId];
+    if (game && game.beys[playerId]) {
+      delete game.beys[playerId];
+    }
+  }
+
   markGameStarted(roomId: string) {
     const game = this.games[roomId];
     if (game) game.status = 'playing';

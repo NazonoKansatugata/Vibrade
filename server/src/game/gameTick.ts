@@ -33,7 +33,7 @@ export class GameLoop {
 
   private tick() {
     this.tickCount++;
-    const activeRooms = Object.keys(roomManager['rooms']); // Using roomManager's internal state for iteration (could be improved)
+    const activeRooms = roomManager.getAllActiveRoomIds();
 
     for (const roomId of activeRooms) {
       const room = roomManager.getRoom(roomId);

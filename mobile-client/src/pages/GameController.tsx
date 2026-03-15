@@ -109,17 +109,20 @@ const GameController = () => {
       {/* ── Game Status Banner ── */}
       <div className="px-4 z-10">
         <div className={`rounded-2xl border px-4 py-2.5 text-center transition-all duration-500 ${
-          gameState.state === 'playing'
+          gameState?.isGameActive
             ? 'bg-emerald-500/10 border-emerald-500/20'
             : 'bg-white/5 border-white/5'
         }`}>
-          {gameState.state === 'waiting' && (
+          {!gameState && (
+            <p className="text-xs text-slate-400 animate-pulse tracking-widest uppercase">Connecting to Room...</p>
+          )}
+          {gameState && !gameState.isGameActive && !gameState.winnerId && (
             <p className="text-xs text-slate-400 animate-pulse tracking-widest uppercase">Waiting for host to start...</p>
           )}
-          {gameState.state === 'playing' && (
+          {gameState?.isGameActive && (
             <p className="text-xs text-emerald-400 font-bold tracking-widest uppercase">● Battle in Progress</p>
           )}
-          {gameState.state === 'ended' && (
+          {gameState && !gameState.isGameActive && gameState.winnerId && (
             <p className="text-xs text-violet-400 font-bold tracking-widest uppercase">Game Over</p>
           )}
         </div>
