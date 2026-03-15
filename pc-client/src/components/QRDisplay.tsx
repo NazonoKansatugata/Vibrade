@@ -6,16 +6,14 @@ interface QRDisplayProps {
   serverUrl?: string
 }
 
-// 本番 URL をデフォルトとする。ローカル環境の場合は location.hostname を使う
+const MOBILE_PROD_URL = 'https://vibrade-mobile.vercel.app'
+
+// 本番 URL をデフォルトとする。必要に応じて VITE_MOBILE_URL で上書きする
 const getBaseUrl = () => {
   if (import.meta.env.VITE_MOBILE_URL) {
     return import.meta.env.VITE_MOBILE_URL;
   }
-  // If running locally, point to the dev server port of the mobile client (5174)
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-    return `http://${window.location.hostname}:5174`;
-  }
-  return 'https://vibrade-mobile.vercel.app';
+  return MOBILE_PROD_URL;
 }
 
 const QRDisplay = ({ roomId }: QRDisplayProps) => {
