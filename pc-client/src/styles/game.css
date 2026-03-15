@@ -1,0 +1,125 @@
+/* ── Game page ──────────────────────────────── */
+.game-page {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  height: 100vh;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.game-page__sidebar {
+  padding: 20px 16px;
+  background: #1e293b;
+  color: #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+  border-right: 1px solid #334155;
+}
+
+.game-page__canvas {
+  position: relative;
+  background: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-page__placeholder {
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.game-page__exit {
+  margin-top: auto;
+}
+
+/* ── GameStatus ─────────────────────────────── */
+.game-status {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.game-status__room {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.game-status__room strong {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 2px;
+  color: #e2e8f0;
+}
+
+.game-status__state {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.game-status__state p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #cbd5e1;
+}
+
+.game-status__badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.game-status__badge--active {
+  background: #16a34a;
+  color: #fff;
+}
+
+.game-status__badge--waiting {
+  background: #334155;
+  color: #94a3b8;
+}
+
+.game-status__beys {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.game-status__bey-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+}
+
+.game-status__energy-bar {
+  height: 6px;
+  background: #334155;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.game-status__energy-fill {
+  height: 100%;
+  background: #22d3ee;
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
+.game-status__winner {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fbbf24;
+  text-align: center;
+}

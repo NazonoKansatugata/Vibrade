@@ -1,11 +1,16 @@
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import RoomCreate from './pages/RoomCreate'
+import Game from './pages/Game'
 
 function App() {
   return (
-    <main className="app-shell">
-      <h1>pc-client</h1>
-      <p>Basic scaffold is ready. No feature implementation yet.</p>
-    </main>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<RoomCreate />} />
+        <Route path="/game/:roomId" element={<Game />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
