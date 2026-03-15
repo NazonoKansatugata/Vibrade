@@ -20,7 +20,7 @@ const QRDisplay = ({ roomId }: QRDisplayProps) => {
   const qrRef = useRef<HTMLDivElement>(null)
 
   const serverUrl = getBaseUrl()
-  const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+  const shouldWarnLocalhost = /localhost|127\.0\.0\.1/.test(serverUrl)
   
   // スマホのデフォルト QR リーダーがブラウザで開く URL
   const joinUrl = `${serverUrl}/join?room=${roomId}`
@@ -53,7 +53,7 @@ const QRDisplay = ({ roomId }: QRDisplayProps) => {
           <span className="qr-display__room-id">{roomId}</span>
         </p>
 
-        {isLocalhost ? (
+        {shouldWarnLocalhost ? (
           <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-xs">
             <p>⚠️ <strong>ローカルテスト時の注意</strong></p>
             <p className="mt-1">

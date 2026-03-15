@@ -1,7 +1,8 @@
 import { io, Socket } from 'socket.io-client';
 import { ClientEvents } from './events';
 
-export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:3000';
+const SERVER_PROD_URL = 'https://vibrade-server.onrender.com';
+export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? SERVER_PROD_URL;
 
 class GameSocket {
   private socket: Socket | null = null;

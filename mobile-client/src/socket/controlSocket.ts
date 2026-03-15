@@ -1,9 +1,9 @@
 import { io, Socket } from 'socket.io-client';
 import { ClientEvents } from './events';
 
-// Note: In a real environment, the URL might come from env vars.
-// During local dev across devices, you might need to connect to the explicit PC IP address.
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || window.location.origin;
+const SERVER_PROD_URL = 'https://vibrade-server.onrender.com';
+// Default to production server, and allow env override for local development.
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || SERVER_PROD_URL;
 
 class ControlSocket {
   private socket: Socket | null = null;
