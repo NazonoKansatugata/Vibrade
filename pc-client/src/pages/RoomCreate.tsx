@@ -1,26 +1,20 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { Player } from '../types'
+import { useGameSocket } from '../hooks/useGameSocket'
 import QRDisplay from '../components/QRDisplay'
 import PlayerList from '../components/PlayerList'
 import '../styles/ui.css'
 
 const RoomCreate = () => {
   const navigate = useNavigate()
-  const [roomId, setRoomId] = useState<string | null>(null)
-  const [players, setPlayers] = useState<Player[]>([])
+  const { roomId, players, createRoom, startGame } = useGameSocket()
 
   const handleCreateRoom = () => {
-    // TODO: socket.emit('createRoom') → roomCreated イベントで roomId を受信
-    // 仮 ID（フェーズ3でサーバー側に差し替え）
-    const mockId = Math.random().toString(36).substring(2, 8).toUpperCase()
-    setRoomId(mockId)
-    setPlayers([]) // reset
+    createRoom()
   }
 
   const handleStartGame = () => {
     if (!roomId) return
-    // TODO: socket.emit('startGame', { roomId })
+    startGame()
     navigate(`/game/${roomId}`)
   }
 
