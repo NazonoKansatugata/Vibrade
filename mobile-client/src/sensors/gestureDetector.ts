@@ -1,9 +1,11 @@
-export enum GestureState {
-  IDLE = 'IDLE',
-  PULLING = 'PULLING',
-  LAUNCH = 'LAUNCH',
-  COOLDOWN = 'COOLDOWN'
-}
+export const GestureState = {
+  IDLE: 'IDLE',
+  PULLING: 'PULLING',
+  LAUNCH: 'LAUNCH',
+  COOLDOWN: 'COOLDOWN',
+} as const
+
+export type GestureState = typeof GestureState[keyof typeof GestureState]
 
 export interface GestureResult {
   state: GestureState;
