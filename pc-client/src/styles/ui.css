@@ -1,0 +1,214 @@
+/* ── RoomCreate ─────────────────────────────── */
+.room-create {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 24px;
+  gap: 32px;
+  background: #f9fafb;
+}
+
+.room-create__header {
+  text-align: center;
+}
+
+.room-create__header h1 {
+  font-size: 2.4rem;
+  margin: 0;
+  color: #111827;
+}
+
+.room-create__subtitle {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.room-create__main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  width: 100%;
+  max-width: 960px;
+}
+
+.room-create__lobby {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  justify-content: center;
+  width: 100%;
+}
+
+.room-create__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.room-create__hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+/* ── Buttons ─────────────────────────────────── */
+.btn {
+  padding: 12px 32px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: #6d28d9;
+  color: #fff;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: #5b21b6;
+}
+
+.btn--secondary {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.btn--secondary:hover:not(:disabled) {
+  background: #d1d5db;
+}
+
+.btn--start {
+  background: #16a34a;
+  color: #fff;
+  font-size: 1.1rem;
+  padding: 16px 48px;
+}
+
+.btn--start:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.btn--large {
+  font-size: 1.3rem;
+  padding: 20px 64px;
+}
+
+/* ── QRDisplay ──────────────────────────────── */
+.qr-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 28px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.qr-display h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #374151;
+}
+
+.qr-display__code canvas {
+  display: block;
+  border-radius: 8px;
+}
+
+.qr-display__info {
+  text-align: center;
+}
+
+.qr-display__info p {
+  margin: 4px 0;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.qr-display__room-id {
+  font-family: 'Courier New', monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 6px;
+  color: #6d28d9;
+}
+
+.qr-display__hint {
+  color: #6b7280;
+  font-size: 0.85rem !important;
+}
+
+/* ── PlayerList ─────────────────────────────── */
+.player-list {
+  min-width: 240px;
+}
+
+.player-list h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: #374151;
+}
+
+.player-list__empty {
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+.player-list__items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.player-list__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.player-list__dot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #d1d5db;
+}
+
+.player-list__dot.is-ready {
+  background: #22c55e;
+}
+
+.player-list__name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.player-list__badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  background: #dcfce7;
+  color: #15803d;
+  border-radius: 4px;
+}
