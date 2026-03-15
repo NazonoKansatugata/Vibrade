@@ -6,8 +6,9 @@ interface QRDisplayProps {
   serverUrl?: string
 }
 
-// .env.local に VITE_MOBILE_URL=https://... を設定すれば本番 URL に切り替わる
-const BASE_URL = import.meta.env.VITE_MOBILE_URL ?? 'http://localhost:5173'
+// 本番 URL をデフォルトとする。ローカル開発時は .env.local に
+// VITE_MOBILE_URL=http://localhost:5173 を設定して上書きすること
+const BASE_URL = import.meta.env.VITE_MOBILE_URL ?? 'https://vibrade-mobile.vercel.app'
 
 const QRDisplay = ({ roomId, serverUrl = BASE_URL }: QRDisplayProps) => {
   const qrRef = useRef<HTMLDivElement>(null)
