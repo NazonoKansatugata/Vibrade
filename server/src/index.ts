@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import { registerSocketHandlers } from './socket/socketHandler.js';
+import { GameLoop } from './game/gameTick.js';
 
 const app = express();
 app.use(cors()); // Allow all local network traffic
@@ -18,6 +19,10 @@ const io = new Server(httpServer, {
 });
 
 registerSocketHandlers(io);
+
+// Start the 30Hz global physics engine
+const gameLoop = new GameLoop(io);
+gameLoop.start();
 
 // Basic health check route
 app.get('/', (req, res) => {
