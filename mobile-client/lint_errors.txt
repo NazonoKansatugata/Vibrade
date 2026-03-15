@@ -1,0 +1,23 @@
+
+> mobile-client@0.0.0 lint
+> eslint .
+
+
+c:\Github\Vibrade\mobile-client\src\hooks\useSensor.ts
+   1:31  error  'useCallback' is defined but never used              @typescript-eslint/no-unused-vars
+   3:41  error  'GestureResult' is defined but never used            @typescript-eslint/no-unused-vars
+  33:11  error  'rawBeta' is never reassigned. Use 'const' instead   prefer-const
+  34:11  error  'rawGamma' is never reassigned. Use 'const' instead  prefer-const
+
+c:\Github\Vibrade\mobile-client\src\pages\NameInputPage.tsx
+   9:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  10:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  12:59  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+c:\Github\Vibrade\mobile-client\src\socket\controlSocket.ts
+  45:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  49:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 9 problems (9 errors, 0 warnings)
+  2 errors and 0 warnings potentially fixable with the `--fix` option.
+
