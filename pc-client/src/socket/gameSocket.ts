@@ -14,7 +14,7 @@ class GameSocket {
       });
 
       this.socket.on('connect', () => {
-        console.log('PC Host Connected:', this.socket?.id);
+        console.log('成功', 'PC Host Connected:', this.socket?.id);
       });
 
       this.socket.on('disconnect', () => {
