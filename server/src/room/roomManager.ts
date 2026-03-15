@@ -87,6 +87,10 @@ class RoomManager {
     }
     return null;
   }
+
+  getAllActiveRoomIds(): string[] {
+    return Object.keys(this.rooms);
+  }
 }
 
 export const roomManager = new RoomManager();
