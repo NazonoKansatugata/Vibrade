@@ -1,4 +1,5 @@
 import type { GameState, BeybladeState } from '../game/gameState.js';
+import { inputHandler } from '../input/inputHandler.js';
 
 /**
  * Optimizes the GameState payload before broadcasting it to clients.
@@ -9,6 +10,7 @@ export class Synchronizer {
   
   static optimizePayload(state: GameState, tick: number): any {
     const optimizedBeys: Record<string, Partial<BeybladeState>> = {};
+    const optimizedInputs: Record<string, { x: number; y: number; z: number; timestamp: number }> = {};
     
     for (const playerId in state.beys) {
       const bey = state.beys[playerId];
@@ -30,11 +32,21 @@ export class Synchronizer {
         isActive: bey.isActive,
         hasLaunched: bey.hasLaunched
       };
+
+      const latestInput = inputHandler.getInput(playerId);
+      optimizedInputs[playerId] = {
+        x: Math.round(latestInput.tiltX * 1000) / 1000,
+        y: Math.round(latestInput.tiltY * 1000) / 1000,
+        // 現在の入力仕様では Z は送られてこないため 0 固定で返す。
+        z: 0,
+        timestamp: latestInput.timestamp,
+      };
     }
 
     return {
       roomId: state.roomId,
       beys: optimizedBeys,
+      inputs: optimizedInputs,
       tick,
       status: state.status,
       isGameActive: state.status === 'playing',

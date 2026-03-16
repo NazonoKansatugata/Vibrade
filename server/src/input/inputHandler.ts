@@ -32,22 +32,24 @@ class InputHandler {
     
     // Ignore older packets if they arrive out of order
     if (existing && ts < existing.timestamp) {
-      return; 
+      return existing;
     }
 
     // Sanitize and Normalize logic (-1 to 1) assuming input limit is ~90 degrees
     let safeTx = this.normalizeAxis(tx);
     let safeTy = this.normalizeAxis(ty);
-    
-    // Optional Deadzone:
-    safeTx = SensorFilter.applyDeadzone(safeTx, 0.05);
-    safeTy = SensorFilter.applyDeadzone(safeTy, 0.05);
 
     this.currentInputs.set(playerId, {
       tiltX: safeTx,
       tiltY: safeTy,
       timestamp: ts || Date.now()
     });
+
+    return {
+      tiltX: safeTx,
+      tiltY: safeTy,
+      timestamp: ts || Date.now(),
+    };
   }
 
   /**

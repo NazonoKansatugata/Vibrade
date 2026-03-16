@@ -6,6 +6,8 @@ import { gestureDetector } from '../input/gestureDetector.js';
 import { gameManager } from '../game/gameState.js';
 
 export function registerSocketHandlers(io: Server) {
+  const lastInputLogBySocket = new Map<string, number>();
+
   io.on('connection', (socket: Socket) => {
     console.log(`[Socket Connected] ID: ${socket.id}`);
 
@@ -78,8 +80,17 @@ export function registerSocketHandlers(io: Server) {
       });
     });
 
-    socket.on(ClientEvents.CONTROL_INPUT, (data: { tiltX: number, tiltY: number, timestamp: number }) => {
-      inputHandler.updateInput(socket.id, data.tiltX, data.tiltY, data.timestamp);
+    socket.on(ClientEvents.CONTROL_INPUT, (data: { roomId?: string, tiltX: number, tiltY: number, timestamp: number }) => {
+      const normalized = inputHandler.updateInput(socket.id, data.tiltX, data.tiltY, data.timestamp);
+
+      const now = Date.now();
+      const lastAt = lastInputLogBySocket.get(socket.id) ?? 0;
+      if (now - lastAt >= 500) {
+        console.log(
+          `[ControlInput] socket=${socket.id} room=${data.roomId ?? '-'} raw=(${Number(data.tiltX).toFixed(3)}, ${Number(data.tiltY).toFixed(3)}) normalized=(${normalized.tiltX.toFixed(3)}, ${normalized.tiltY.toFixed(3)}) ts=${data.timestamp}`,
+        );
+        lastInputLogBySocket.set(socket.id, now);
+      }
     });
 
     socket.on(ClientEvents.LAUNCH_BEY, (data: { roomId: string, power: number, timestamp: number }) => {
@@ -105,6 +116,7 @@ export function registerSocketHandlers(io: Server) {
 
     // --- Disconnect Handling ---
     socket.on(ClientEvents.DISCONNECT, () => {
+      lastInputLogBySocket.delete(socket.id);
       inputHandler.removePlayer(socket.id);
       gestureDetector.removePlayer(socket.id);
       // Case 1: Was it a Host? If host disconnects, destroy room

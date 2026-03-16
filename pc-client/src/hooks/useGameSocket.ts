@@ -27,6 +27,12 @@ export interface GameStateData {
   isGameActive: boolean;
   tick: number;
   winnerId?: string | null;
+  inputs?: Record<string, {
+    x: number;
+    y: number;
+    z: number;
+    timestamp: number;
+  }>;
   beys: Record<string, {
     position: { x: number, y: number };
     velocity: { x: number, y: number };
