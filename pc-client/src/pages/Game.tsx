@@ -8,16 +8,17 @@ import type { GameState } from '../types'
 import '../styles/game.css'
 
 const ENABLE_DEMO_FALLBACK = import.meta.env.VITE_USE_DEMO_GAMESTATE === 'true'
-const ENABLE_SOCKET_TIMELINE = true
+const ENABLE_TILT_PANEL = true
 
 const Game = () => {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
   const resolvedRoomId = roomId ?? ''
-  const { latestGameStart, latestPlayerInput, debugEvents } = useGameSocket(resolvedRoomId)
+  const { latestGameStart, latestPlayerInput, latestPlayerInputs, players } = useGameSocket(resolvedRoomId)
   const [sceneGameState, setSceneGameState] = useState<GameState | undefined>(undefined)
   const demoGameState = useDemoGameState(resolvedRoomId, ENABLE_DEMO_FALLBACK)
   const gameState = sceneGameState ?? (ENABLE_DEMO_FALLBACK ? demoGameState : undefined)
+  const tiltRows = Object.values(latestPlayerInputs)
 
   const handleStateChange = useCallback((next: GameState) => {
     setSceneGameState(next)
@@ -28,16 +29,22 @@ const Game = () => {
       <aside className="game-page__sidebar">
         <GameStatus roomId={resolvedRoomId} gameState={gameState} />
 
-        {ENABLE_SOCKET_TIMELINE && (
+        {ENABLE_TILT_PANEL && (
           <div className="socket-debug-panel">
-            <p className="socket-debug-panel__title">Socket Timeline</p>
+            <p className="socket-debug-panel__title">Player Tilt (x, y, z)</p>
             <ul className="socket-debug-panel__list">
-              {debugEvents.slice(0, 8).map((entry, index) => (
-                <li key={`${entry.at}-${entry.event}-${index}`}>
-                  <span>[{entry.at}]</span> {entry.event}
-                  {entry.detail ? ` - ${entry.detail}` : ''}
-                </li>
-              ))}
+              {tiltRows.length === 0 && <li>入力待機中...</li>}
+              {tiltRows.map((row) => {
+                const player = players.find((p) => p.id === row.playerId)
+                const label = player?.name ?? row.playerId.slice(0, 6)
+
+                return (
+                  <li key={row.playerId}>
+                    <span>{label}</span>{' '}
+                    x:{row.tiltX.toFixed(2)} y:{row.tiltY.toFixed(2)} z:{(0).toFixed(2)}
+                  </li>
+                )
+              })}
             </ul>
           </div>
         )}

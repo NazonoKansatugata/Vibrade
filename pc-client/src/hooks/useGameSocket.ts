@@ -40,6 +40,7 @@ export const useGameSocket = (roomIdHint?: string) => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [latestGameStart, setLatestGameStart] = useState<GameStartPayload | null>(null);
   const [latestPlayerInput, setLatestPlayerInput] = useState<PlayerInputPayload | null>(null);
+  const [latestPlayerInputs, setLatestPlayerInputs] = useState<Record<string, PlayerInputPayload>>({});
   const [error, setError] = useState<SocketErrorPayload | null>(null);
   const [debugEvents, setDebugEvents] = useState<SocketDebugEvent[]>([]);
   const lastInputLogAt = useRef(0);
@@ -86,12 +87,17 @@ export const useGameSocket = (roomIdHint?: string) => {
       setRoomId(nextRoomId ?? null);
       setPlayers(nextPlayers);
       setLatestGameStart({ roomId: nextRoomId, players: nextPlayers });
+      setLatestPlayerInputs({});
       appendDebugEvent(ServerEvents.GAME_START, `roomId=${nextRoomId} players=${nextPlayers.length}`);
     };
 
     const onPlayerInput = (payload: PlayerInputPayload) => {
       if (!payload?.playerId) return;
       setLatestPlayerInput(payload);
+      setLatestPlayerInputs((prev) => ({
+        ...prev,
+        [payload.playerId]: payload,
+      }));
 
       const now = Date.now();
       if (now - lastInputLogAt.current >= 500) {
@@ -144,6 +150,7 @@ export const useGameSocket = (roomIdHint?: string) => {
     players,
     latestGameStart,
     latestPlayerInput,
+    latestPlayerInputs,
     error,
     debugEvents: ENABLE_SOCKET_TIMELINE ? debugEvents : [],
     createRoom,
