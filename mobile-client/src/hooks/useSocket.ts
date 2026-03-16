@@ -30,9 +30,21 @@ export const useSocket = (roomId: string, playerName: string) => {
       setGameState(state);
     };
 
-    // ゲーム開始イベント等があればここに追加
+    // GAME_START が GAME_STATE より先に来ても表示を開始状態にできるようにする
     const onGameStarted = () => {
-      setGameState(prev => prev ? { ...prev, isGameActive: true } : null);
+      setGameState((prev) => {
+        if (prev) {
+          return { ...prev, isGameActive: true };
+        }
+
+        return {
+          roomId,
+          isGameActive: true,
+          tick: 0,
+          winnerId: null,
+          beys: {},
+        };
+      });
     };
 
     const onCollision = () => {

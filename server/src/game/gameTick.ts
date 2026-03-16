@@ -63,18 +63,26 @@ export class GameLoop {
     CollisionEngine.handleCollisions(game.roomId, game.beys, this.broadcaster);
 
     // 3. Check win condition
-    const activeBeys = Object.values(game.beys).filter(b => b.isActive);
-    if (activeBeys.length <= 1) {
-       // Stop game
-       game.status = 'ended';
-       const winnerId = activeBeys.length === 1 ? (activeBeys[0]?.id ?? null) : null;
-       gameManager.markGameEnded(game.roomId, winnerId);
+     const activeBeys = Object.values(game.beys).filter(b => b.isActive);
+     const totalBeys = Object.keys(game.beys).length;
 
+     // For one-player debug sessions, keep the game running instead of ending immediately.
+     if (activeBeys.length === 0) {
+       game.status = 'ended';
+       gameManager.markGameEnded(game.roomId, null);
+       this.broadcaster.broadcastGameEnd(game.roomId, game, this.tickCount);
+       console.log(`[Game Over] Room: ${game.roomId}. Winner: DRAW`);
+       return;
+     }
+
+     if (activeBeys.length === 1 && totalBeys > 1) {
+       const winnerId = activeBeys[0]?.id ?? null;
+       game.status = 'ended';
+       gameManager.markGameEnded(game.roomId, winnerId);
        this.broadcaster.broadcastGameEnd(game.roomId, game, this.tickCount);
        console.log(`[Game Over] Room: ${game.roomId}. Winner: ${winnerId || 'DRAW'}`);
-       
        return; // Stop processing this game's further ticks until reset
-    }
+     }
 
     // 4. Broadcast state
     // We pass the tick count for client-side interpolation if necessary
