@@ -23,6 +23,7 @@ interface SocketErrorPayload {
 
 export interface GameStateData {
   roomId: string;
+  status: 'waiting' | 'armed' | 'playing' | 'ended';
   isGameActive: boolean;
   tick: number;
   winnerId?: string | null;
@@ -83,7 +84,7 @@ export const useGameSocket = () => {
       setGameState(state);
       appendDebugEvent(
         ServerEvents.GAME_STATE,
-        `tick=${state.tick} active=${state.isGameActive} beys=${Object.keys(state.beys).length}`,
+        `tick=${state.tick} status=${state.status} active=${state.isGameActive} beys=${Object.keys(state.beys).length}`,
       );
     };
 

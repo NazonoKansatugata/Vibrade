@@ -71,6 +71,7 @@ const GameController = () => {
   }
 
   const powerPct = Math.round(sensorData.shakePower * 100)
+  const isLaunchReady = gameState?.status === 'armed'
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0a0a12] text-white select-none touch-none overflow-hidden">
@@ -118,8 +119,11 @@ const GameController = () => {
           {!gameState && (
             <p className="text-xs text-slate-400 animate-pulse tracking-widest uppercase">Connecting to Room...</p>
           )}
-          {gameState && !gameState.isGameActive && !gameState.winnerId && (
+          {gameState?.status === 'waiting' && !gameState.winnerId && (
             <p className="text-xs text-slate-400 animate-pulse tracking-widest uppercase">Waiting for host to start...</p>
+          )}
+          {isLaunchReady && !gameState?.winnerId && (
+            <p className="text-xs text-yellow-400 font-bold tracking-widest uppercase">Ready to Launch</p>
           )}
           {gameState?.isGameActive && (
             <p className="text-xs text-emerald-400 font-bold tracking-widest uppercase">● Battle in Progress</p>

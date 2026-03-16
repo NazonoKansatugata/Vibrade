@@ -37,6 +37,7 @@ export const normalizeServerGameState = (
     tick: payload.tick,
     players: mergedPlayers,
     beys,
+    status: payload.status,
     isGameActive: payload.isGameActive,
     winnerId: payload.winnerId ?? undefined,
   }

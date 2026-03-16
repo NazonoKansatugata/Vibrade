@@ -10,6 +10,20 @@ class InputHandler {
   // Keyed by player.socketId (or player.id)
   private currentInputs: Map<string, PlayerInput> = new Map();
 
+  private normalizeAxis(value: number) {
+    if (typeof value !== 'number' || Number.isNaN(value) || !Number.isFinite(value)) {
+      return 0;
+    }
+
+    // Mobile client already sends normalized tilt in the range [-1, 1].
+    if (Math.abs(value) <= 1) {
+      return SensorFilter.clamp(value, -1, 1);
+    }
+
+    // Fallback for older clients that still send raw device angles.
+    return SensorFilter.normalize(value, 90);
+  }
+
   /**
    * Called whenever a socket receives `controlInput`
    */
@@ -22,8 +36,8 @@ class InputHandler {
     }
 
     // Sanitize and Normalize logic (-1 to 1) assuming input limit is ~90 degrees
-    let safeTx = SensorFilter.normalize(tx, 90);
-    let safeTy = SensorFilter.normalize(ty, 90);
+    let safeTx = this.normalizeAxis(tx);
+    let safeTy = this.normalizeAxis(ty);
     
     // Optional Deadzone:
     safeTx = SensorFilter.applyDeadzone(safeTx, 0.05);

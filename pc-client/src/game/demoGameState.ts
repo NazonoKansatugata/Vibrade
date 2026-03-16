@@ -3,6 +3,7 @@ import type { GameState } from '../types'
 export const createDemoGameState = (roomId: string): GameState => ({
   roomId,
   tick: 0,
+  status: 'playing',
   isGameActive: true,
   players: [
     { id: 'p1', socketId: 'demo-1', name: 'Player 1', ready: true },

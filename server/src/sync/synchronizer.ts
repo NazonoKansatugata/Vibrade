@@ -36,6 +36,7 @@ export class Synchronizer {
       roomId: state.roomId,
       beys: optimizedBeys,
       tick,
+      status: state.status,
       isGameActive: state.status === 'playing',
       winnerId: state.winnerId
     };

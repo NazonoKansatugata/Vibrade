@@ -29,7 +29,7 @@ export function registerSocketHandlers(io: Server) {
       const room = roomManager.getRoom(roomId);
       const game = gameManager.getGame(roomId);
       
-      if (room && room.hostSocketId === socket.id && game) {
+      if (room && room.hostSocketId === socket.id && game && game.status === 'waiting') {
         
         // Spawn all current players in the room
         room.players.forEach(p => {
@@ -37,12 +37,12 @@ export function registerSocketHandlers(io: Server) {
           gameManager.spawnBey(roomId, p.socketId, 0); 
         });
 
-        // Start the game logic flags
-        gameManager.markGameStarted(roomId);
+        // Move to launch-ready state. The actual battle starts after the first launch.
+        gameManager.markGameArmed(roomId);
 
         // Notify everyone in the room (including mobile clients)
         io.to(roomId).emit(ServerEvents.GAME_START);
-        console.log(`[Game Started] Room ID: ${roomId}`);
+        console.log(`[Game Armed] Room ID: ${roomId}`);
       }
     });
 
@@ -89,6 +89,11 @@ export function registerSocketHandlers(io: Server) {
       if (valid) {
         const bey = gameManager.applyLaunch(data.roomId, socket.id, power);
         if (bey) {
+           const game = gameManager.getGame(data.roomId);
+           if (game?.status === 'armed') {
+             gameManager.markGameStarted(data.roomId);
+             console.log(`[Game Started] Room ID: ${data.roomId}`);
+           }
            console.log(`[Launch Validated] Player ${socket.id} launched with power ${power}. Spin: ${bey.spinPower}`);
         } else {
            socket.emit(ServerEvents.ERROR, { code: 'INVALID_STATE', message: 'You do not have an active beyblade in this game.' });
