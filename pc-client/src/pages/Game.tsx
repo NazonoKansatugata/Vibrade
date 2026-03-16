@@ -7,11 +7,12 @@ import { useDemoGameState } from '../hooks/useDemoGameState'
 import '../styles/game.css'
 
 const ENABLE_DEMO_FALLBACK = import.meta.env.VITE_USE_DEMO_GAMESTATE === 'true'
+const ENABLE_SOCKET_TIMELINE = true
 
 const Game = () => {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
-  const { gameState: socketGameState, players } = useGameSocket()
+  const { gameState: socketGameState, players, debugEvents } = useGameSocket()
   const resolvedRoomId = roomId ?? ''
   const demoGameState = useDemoGameState(resolvedRoomId, ENABLE_DEMO_FALLBACK)
   const normalizedSocketGameState =
@@ -24,6 +25,20 @@ const Game = () => {
     <div className="game-page">
       <aside className="game-page__sidebar">
         <GameStatus roomId={resolvedRoomId} gameState={gameState} />
+
+        {ENABLE_SOCKET_TIMELINE && (
+          <div className="socket-debug-panel">
+            <p className="socket-debug-panel__title">Socket Timeline</p>
+            <ul className="socket-debug-panel__list">
+              {debugEvents.slice(0, 8).map((entry, index) => (
+                <li key={`${entry.at}-${entry.event}-${index}`}>
+                  <span>[{entry.at}]</span> {entry.event}
+                  {entry.detail ? ` - ${entry.detail}` : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <button
           className="btn btn--secondary game-page__exit"
