@@ -50,7 +50,7 @@ const RoomCreate = () => {
               >
                 ゲームを開始する（{players.length} 人参加中）
               </button>
-              <p className="room-create__hint">最低 2 人以上必要です</p>
+              <p className="room-create__hint">デバッグ時は 1 人でも開始できます</p>
             </div>
           </>
         )}
