@@ -36,7 +36,7 @@ interface SocketErrorPayload {
 
 export const useGameSocket = (roomIdHint?: string) => {
   const [isConnected, setIsConnected] = useState(false);
-  const [roomId, setRoomId] = useState<string | null>(null);
+  const [roomId, setRoomId] = useState<string | null>(roomIdHint ?? null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [latestGameStart, setLatestGameStart] = useState<GameStartPayload | null>(null);
   const [latestPlayerInput, setLatestPlayerInput] = useState<PlayerInputPayload | null>(null);
@@ -57,12 +57,6 @@ export const useGameSocket = (roomIdHint?: string) => {
 
     setDebugEvents((prev) => [entry, ...prev].slice(0, 40));
   };
-
-  useEffect(() => {
-    if (roomIdHint) {
-      setRoomId(roomIdHint);
-    }
-  }, [roomIdHint]);
 
   useEffect(() => {
     const socket = gameSocket.connect();
