@@ -98,6 +98,8 @@ export function registerSocketHandlers(io: Server) {
         } else {
            socket.emit(ServerEvents.ERROR, { code: 'INVALID_STATE', message: 'You do not have an active beyblade in this game.' });
         }
+      } else {
+        console.log(`[Launch Rejected] Player ${socket.id} raw=${data.power} room=${data.roomId}`);
       }
     });
 

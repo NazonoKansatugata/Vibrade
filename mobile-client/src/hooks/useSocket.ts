@@ -22,6 +22,11 @@ export interface GameStateData {
   }>;
 }
 
+interface SocketErrorPayload {
+  code: string;
+  message: string;
+}
+
 export const useSocket = (roomId: string, playerName: string) => {
   const [isConnected, setIsConnected] = useState(false);
   const [gameState, setGameState] = useState<GameStateData | null>(null);
@@ -92,11 +97,16 @@ export const useSocket = (roomId: string, playerName: string) => {
       }
     };
 
+    const onError = (err: SocketErrorPayload) => {
+      appendDebugEvent(ServerEvents.ERROR, `${err.code}: ${err.message}`);
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on(ServerEvents.GAME_STATE, onGameState);
     socket.on(ServerEvents.GAME_START, onGameStarted);
     socket.on(ServerEvents.COLLISION, onCollision);
+    socket.on(ServerEvents.ERROR, onError);
 
     return () => {
       window.clearTimeout(joinLogTimer);
@@ -105,6 +115,7 @@ export const useSocket = (roomId: string, playerName: string) => {
       socket.off(ServerEvents.GAME_STATE, onGameState);
       socket.off(ServerEvents.GAME_START, onGameStarted);
       socket.off(ServerEvents.COLLISION, onCollision);
+      socket.off(ServerEvents.ERROR, onError);
       controlSocket.disconnect();
     };
   }, [roomId, playerName]);
