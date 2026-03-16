@@ -5,6 +5,8 @@ export const normalizeServerGameState = (
   payload: GameStateData,
   players: Player[],
 ): GameState => {
+  const playersById = new Map(players.map((player) => [player.id, player]))
+
   const beys = Object.entries(payload.beys).map(([playerId, bey]) => ({
     id: playerId,
     playerId,
@@ -16,10 +18,24 @@ export const normalizeServerGameState = (
     rotation: calculateRotation(bey.velocity.x, bey.velocity.y),
   }))
 
+  const mergedPlayers = Object.keys(payload.beys).map((playerId) => {
+    const existing = playersById.get(playerId)
+    if (existing) {
+      return existing
+    }
+
+    return {
+      id: playerId,
+      socketId: playerId,
+      name: playerId.slice(0, 6),
+      ready: true,
+    }
+  })
+
   return {
     roomId: payload.roomId,
     tick: payload.tick,
-    players,
+    players: mergedPlayers,
     beys,
     isGameActive: payload.isGameActive,
     winnerId: payload.winnerId ?? undefined,

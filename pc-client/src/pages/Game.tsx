@@ -6,17 +6,19 @@ import { normalizeServerGameState } from '../game/normalizeServerGameState'
 import { useDemoGameState } from '../hooks/useDemoGameState'
 import '../styles/game.css'
 
+const ENABLE_DEMO_FALLBACK = import.meta.env.VITE_USE_DEMO_GAMESTATE === 'true'
+
 const Game = () => {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
   const { gameState: socketGameState, players } = useGameSocket()
   const resolvedRoomId = roomId ?? ''
-  const demoGameState = useDemoGameState(resolvedRoomId)
+  const demoGameState = useDemoGameState(resolvedRoomId, ENABLE_DEMO_FALLBACK)
   const normalizedSocketGameState =
     socketGameState && socketGameState.roomId === resolvedRoomId
       ? normalizeServerGameState(socketGameState, players)
       : null
-  const gameState = normalizedSocketGameState ?? demoGameState
+  const gameState = normalizedSocketGameState ?? (ENABLE_DEMO_FALLBACK ? demoGameState : undefined)
 
   return (
     <div className="game-page">

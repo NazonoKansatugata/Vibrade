@@ -2,6 +2,8 @@ import Phaser from 'phaser'
 import BeySprite from '../sprites/Bey'
 import type { GameState } from '../../types'
 
+const SERVER_ARENA_RADIUS = 500
+
 class GameScene extends Phaser.Scene {
   private readonly roomId: string
   private arena?: Phaser.GameObjects.Arc
@@ -116,11 +118,15 @@ class GameScene extends Phaser.Scene {
   }
 
   private projectX(x: number) {
-    return (x / 1280) * this.scale.width
+    const centerX = this.scale.width / 2
+    const arenaPixelRadius = Math.min(this.scale.width, this.scale.height) * 0.34 * 0.9
+    return centerX + (x / SERVER_ARENA_RADIUS) * arenaPixelRadius
   }
 
   private projectY(y: number) {
-    return (y / 720) * this.scale.height
+    const centerY = this.scale.height / 2
+    const arenaPixelRadius = Math.min(this.scale.width, this.scale.height) * 0.34 * 0.9
+    return centerY + (y / SERVER_ARENA_RADIUS) * arenaPixelRadius
   }
 }
 
