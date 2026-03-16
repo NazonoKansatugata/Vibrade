@@ -48,9 +48,9 @@ const RoomCreate = () => {
                 onClick={handleStartGame}
                 disabled={players.length < 1}
               >
-                発射待機を開始する（{players.length} 人参加中）
+                ゲームを開始する（{players.length} 人参加中）
               </button>
-              <p className="room-create__hint">ホスト開始後、スマホで発射すると対戦が始まります</p>
+              <p className="room-create__hint">デバッグ時は 1 人でも開始できます</p>
             </div>
           </>
         )}

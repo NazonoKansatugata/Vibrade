@@ -70,18 +70,18 @@ export const useSocket = (roomId: string, playerName: string) => {
       appendDebugEvent(ServerEvents.GAME_STATE, `tick=${state.tick} status=${state.status} active=${state.isGameActive}`);
     };
 
-    // GAME_START が GAME_STATE より先に来ても発射待機状態にできるようにする
+    // GAME_START が GAME_STATE より先に来ても開始状態にできるようにする
     const onGameStarted = () => {
       appendDebugEvent(ServerEvents.GAME_START);
       setGameState((prev) => {
         if (prev) {
-          return { ...prev, status: 'armed', isGameActive: false };
+          return { ...prev, status: 'playing', isGameActive: true };
         }
 
         return {
           roomId,
-          status: 'armed',
-          isGameActive: false,
+          status: 'playing',
+          isGameActive: true,
           tick: 0,
           winnerId: null,
           beys: {},

@@ -33,16 +33,16 @@ export function registerSocketHandlers(io: Server) {
         
         // Spawn all current players in the room
         room.players.forEach(p => {
-          // Initialize their beyblade with 0 power until they launch
-          gameManager.spawnBey(roomId, p.socketId, 0); 
+          // Give a minimum initial power so battle can start without shake-launch.
+          gameManager.spawnBey(roomId, p.socketId, 0.35); 
         });
 
-        // Move to launch-ready state. The actual battle starts after the first launch.
-        gameManager.markGameArmed(roomId);
+        // Start immediately on host action.
+        gameManager.markGameStarted(roomId);
 
         // Notify everyone in the room (including mobile clients)
         io.to(roomId).emit(ServerEvents.GAME_START);
-        console.log(`[Game Armed] Room ID: ${roomId}`);
+        console.log(`[Game Started] Room ID: ${roomId}`);
       }
     });
 
