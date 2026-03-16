@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useLocation, Navigate } from 'react-router-dom'
 import { useSensor } from '../hooks/useSensor'
 import { useSocket } from '../hooks/useSocket'
@@ -13,15 +13,30 @@ const GameController = () => {
 
   const sensorData = useSensor()
   const { isConnected, gameState, debugEvents, sendInput } = useSocket(roomId || '', playerName || '')
+  const latestSensorRef = useRef({ tiltX: 0, tiltY: 0, shakePower: 0 })
+  const sendInputRef = useRef(sendInput)
+
+  useEffect(() => {
+    latestSensorRef.current = {
+      tiltX: sensorData.tiltX,
+      tiltY: sensorData.tiltY,
+      shakePower: sensorData.shakePower,
+    }
+  }, [sensorData.tiltX, sensorData.tiltY, sensorData.shakePower])
+
+  useEffect(() => {
+    sendInputRef.current = sendInput
+  }, [sendInput])
 
   // 30fps で操作情報をサーバーに送信
   useEffect(() => {
     if (!isConnected) return
     const interval = setInterval(() => {
-      sendInput(sensorData.tiltX, sensorData.tiltY, sensorData.shakePower)
+      const { tiltX, tiltY, shakePower } = latestSensorRef.current
+      sendInputRef.current(tiltX, tiltY, shakePower)
     }, 33)
     return () => clearInterval(interval)
-  }, [isConnected, sendInput, sensorData.tiltX, sensorData.tiltY, sensorData.shakePower])
+  }, [isConnected])
 
   if (!roomId || !playerName) {
     return <Navigate to="/join" replace />
