@@ -5,12 +5,14 @@ import { useSocket } from '../hooks/useSocket'
 import { GestureState } from '../sensors/gestureDetector'
 import { Wifi, WifiOff } from 'lucide-react'
 
+const ENABLE_SOCKET_TIMELINE = true
+
 const GameController = () => {
   const location = useLocation()
   const { roomId, playerName } = location.state || {}
 
   const sensorData = useSensor()
-  const { isConnected, gameState, sendInput } = useSocket(roomId || '', playerName || '')
+  const { isConnected, gameState, debugEvents, sendInput } = useSocket(roomId || '', playerName || '')
 
   // 30fps で操作情報をサーバーに送信
   useEffect(() => {
@@ -127,6 +129,21 @@ const GameController = () => {
           )}
         </div>
       </div>
+
+      {ENABLE_SOCKET_TIMELINE && (
+        <div className="px-4 pt-3 z-10">
+          <div className="rounded-xl border border-white/10 bg-black/40 px-3 py-2">
+            <p className="text-[10px] text-sky-300 uppercase tracking-widest mb-2">Socket Timeline</p>
+            <ul className="space-y-1 max-h-28 overflow-auto text-[10px] text-slate-300 font-mono">
+              {debugEvents.slice(0, 8).map((entry, index) => (
+                <li key={`${entry.at}-${entry.event}-${index}`}>
+                  [{entry.at}] {entry.event}{entry.detail ? ` - ${entry.detail}` : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* ── Main Area ── */}
       <div className="flex-1 flex flex-col items-center justify-center gap-8 px-6 py-6 z-10">

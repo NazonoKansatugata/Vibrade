@@ -39,6 +39,31 @@
   margin-top: auto;
 }
 
+.socket-debug-panel {
+  margin-top: 8px;
+  border: 1px solid #334155;
+  background: #0b1220;
+  border-radius: 10px;
+  padding: 10px;
+  color: #cbd5e1;
+  font-size: 11px;
+}
+
+.socket-debug-panel__title {
+  margin: 0 0 8px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #93c5fd;
+}
+
+.socket-debug-panel__list {
+  margin: 0;
+  padding-left: 14px;
+  display: grid;
+  gap: 4px;
+}
+
 /* ── GameStatus ─────────────────────────────── */
 .game-status {
   display: flex;
