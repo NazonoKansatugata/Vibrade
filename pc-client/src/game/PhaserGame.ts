@@ -1,17 +1,20 @@
 import Phaser from 'phaser'
 import GameScene from './scenes/GameScene'
 import type { GameState } from '../types'
+import type { GameStartPayload, PlayerInputPayload } from '../hooks/useGameSocket'
 
 export interface PhaserGameHandle {
   game: Phaser.Game
-  updateGameState: (gameState: GameState) => void
+  startGame: (payload: GameStartPayload) => void
+  applyPlayerInput: (payload: PlayerInputPayload) => void
 }
 
 export const createPhaserGame = (
   parent: HTMLElement,
   roomId: string,
+  onStateChange?: (gameState: GameState) => void,
 ): PhaserGameHandle => {
-  const scene = new GameScene(roomId)
+  const scene = new GameScene(roomId, onStateChange)
 
   const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
@@ -36,8 +39,11 @@ export const createPhaserGame = (
 
   return {
     game,
-    updateGameState: (gameState) => {
-      scene.applyGameState(gameState)
+    startGame: (payload) => {
+      scene.startSimulation(payload)
+    },
+    applyPlayerInput: (payload) => {
+      scene.applyPlayerInput(payload)
     },
   }
 }

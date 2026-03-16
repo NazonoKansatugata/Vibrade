@@ -19,6 +19,20 @@ export interface Room {
 class RoomManager {
   private rooms: Record<string, Room> = {};
 
+  getPlayerContextBySocketId(socketId: string): { roomId: string; room: Room; player: Player } | null {
+    for (const roomId in this.rooms) {
+      const room = this.rooms[roomId];
+      if (!room) continue;
+
+      const player = room.players.find((p) => p.socketId === socketId);
+      if (player) {
+        return { roomId, room, player };
+      }
+    }
+
+    return null;
+  }
+
   createRoom(hostSocketId: string): Room {
     let roomId = generateRoomId();
     while (this.rooms[roomId]) {

@@ -1,9 +1,10 @@
+import { useCallback, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useGameSocket } from '../hooks/useGameSocket'
 import GameCanvas from '../components/GameCanvas'
 import GameStatus from '../components/GameStatus'
-import { normalizeServerGameState } from '../game/normalizeServerGameState'
 import { useDemoGameState } from '../hooks/useDemoGameState'
+import type { GameState } from '../types'
 import '../styles/game.css'
 
 const ENABLE_DEMO_FALLBACK = import.meta.env.VITE_USE_DEMO_GAMESTATE === 'true'
@@ -12,14 +13,15 @@ const ENABLE_SOCKET_TIMELINE = true
 const Game = () => {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
-  const { gameState: socketGameState, players, debugEvents } = useGameSocket()
   const resolvedRoomId = roomId ?? ''
+  const { latestGameStart, latestPlayerInput, debugEvents } = useGameSocket(resolvedRoomId)
+  const [sceneGameState, setSceneGameState] = useState<GameState | undefined>(undefined)
   const demoGameState = useDemoGameState(resolvedRoomId, ENABLE_DEMO_FALLBACK)
-  const normalizedSocketGameState =
-    socketGameState && socketGameState.roomId === resolvedRoomId
-      ? normalizeServerGameState(socketGameState, players)
-      : null
-  const gameState = normalizedSocketGameState ?? (ENABLE_DEMO_FALLBACK ? demoGameState : undefined)
+  const gameState = sceneGameState ?? (ENABLE_DEMO_FALLBACK ? demoGameState : undefined)
+
+  const handleStateChange = useCallback((next: GameState) => {
+    setSceneGameState(next)
+  }, [])
 
   return (
     <div className="game-page">
@@ -49,7 +51,12 @@ const Game = () => {
       </aside>
 
       <main className="game-page__canvas">
-        <GameCanvas roomId={resolvedRoomId} gameState={gameState} />
+        <GameCanvas
+          roomId={resolvedRoomId}
+          startPayload={latestGameStart}
+          inputPayload={latestPlayerInput}
+          onGameStateChange={handleStateChange}
+        />
       </main>
     </div>
   )

@@ -13,6 +13,7 @@ export const ClientEvents = {
 export const ServerEvents = {
   ROOM_CREATED: 'roomCreated',
   PLAYER_LIST: 'playerList',
+  PLAYER_INPUT: 'playerInput',
   GAME_STATE: 'gameState',
   COLLISION: 'collision',
   GAME_START: 'gameStart',

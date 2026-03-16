@@ -1,6 +1,9 @@
 # server実装計画
 
 Vibrade の server を、サーバ権威型同期を前提に段階実装するための計画書。
+
+> 2026-03-16 方針変更メモ:
+> 物理演算は pc-client(Phaser) 側で実行し、server はルーム管理・接続管理・入力中継を中心にする。
 対象: Node.js + TypeScript + Socket.io
 
 ---

@@ -5,13 +5,16 @@ import {
   type PhaserGameHandle,
 } from '../game/PhaserGame'
 import type { GameState } from '../types'
+import type { GameStartPayload, PlayerInputPayload } from '../hooks/useGameSocket'
 
 interface GameCanvasProps {
   roomId: string
-  gameState?: GameState
+  startPayload?: GameStartPayload | null
+  inputPayload?: PlayerInputPayload | null
+  onGameStateChange?: (gameState: GameState) => void
 }
 
-const GameCanvas = ({ roomId, gameState }: GameCanvasProps) => {
+const GameCanvas = ({ roomId, startPayload, inputPayload, onGameStateChange }: GameCanvasProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const gameRef = useRef<PhaserGameHandle>(null)
 
@@ -21,7 +24,7 @@ const GameCanvas = ({ roomId, gameState }: GameCanvasProps) => {
       return
     }
 
-    gameRef.current = createPhaserGame(container, roomId)
+    gameRef.current = createPhaserGame(container, roomId, onGameStateChange)
 
     return () => {
       if (gameRef.current) {
@@ -29,15 +32,23 @@ const GameCanvas = ({ roomId, gameState }: GameCanvasProps) => {
       }
       gameRef.current = null
     }
-  }, [roomId])
+  }, [roomId, onGameStateChange])
 
   useEffect(() => {
-    if (!gameState) {
+    if (!startPayload) {
       return
     }
 
-    gameRef.current?.updateGameState(gameState)
-  }, [gameState])
+    gameRef.current?.startGame(startPayload)
+  }, [startPayload])
+
+  useEffect(() => {
+    if (!inputPayload) {
+      return
+    }
+
+    gameRef.current?.applyPlayerInput(inputPayload)
+  }, [inputPayload])
 
   return <div ref={containerRef} className="game-canvas" />
 }

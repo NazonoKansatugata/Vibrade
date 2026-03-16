@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { gameSocket } from '../socket/gameSocket';
 import { ServerEvents } from '../socket/events';
 import type { Player } from '../types';
@@ -16,33 +16,33 @@ interface PlayerListPayload {
   players: Player[];
 }
 
+export interface GameStartPayload {
+  roomId: string;
+  players: Player[];
+}
+
+export interface PlayerInputPayload {
+  roomId: string;
+  playerId: string;
+  tiltX: number;
+  tiltY: number;
+  timestamp: number;
+}
+
 interface SocketErrorPayload {
   code: string;
   message: string;
 }
 
-export interface GameStateData {
-  roomId: string;
-  status: 'waiting' | 'armed' | 'playing' | 'ended';
-  isGameActive: boolean;
-  tick: number;
-  winnerId?: string | null;
-  beys: Record<string, {
-    position: { x: number, y: number };
-    velocity: { x: number, y: number };
-    spinPower: number;
-    energy: number;
-    isActive: boolean;
-  }>;
-}
-
-export const useGameSocket = () => {
+export const useGameSocket = (roomIdHint?: string) => {
   const [isConnected, setIsConnected] = useState(false);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
-  const [gameState, setGameState] = useState<GameStateData | null>(null);
+  const [latestGameStart, setLatestGameStart] = useState<GameStartPayload | null>(null);
+  const [latestPlayerInput, setLatestPlayerInput] = useState<PlayerInputPayload | null>(null);
   const [error, setError] = useState<SocketErrorPayload | null>(null);
   const [debugEvents, setDebugEvents] = useState<SocketDebugEvent[]>([]);
+  const lastInputLogAt = useRef(0);
 
   const appendDebugEvent = (event: string, detail?: string) => {
     if (!ENABLE_SOCKET_TIMELINE) {
@@ -57,6 +57,12 @@ export const useGameSocket = () => {
 
     setDebugEvents((prev) => [entry, ...prev].slice(0, 40));
   };
+
+  useEffect(() => {
+    if (roomIdHint) {
+      setRoomId(roomIdHint);
+    }
+  }, [roomIdHint]);
 
   useEffect(() => {
     const socket = gameSocket.connect();
@@ -80,16 +86,24 @@ export const useGameSocket = () => {
       appendDebugEvent(ServerEvents.PLAYER_LIST, `count=${data.players.length}`);
     };
 
-    const onGameState = (state: GameStateData) => {
-      setGameState(state);
-      appendDebugEvent(
-        ServerEvents.GAME_STATE,
-        `tick=${state.tick} status=${state.status} active=${state.isGameActive} beys=${Object.keys(state.beys).length}`,
-      );
+    const onGameStart = (payload: GameStartPayload) => {
+      const nextRoomId = payload?.roomId || roomIdHint || '';
+      const nextPlayers = payload?.players || [];
+      setRoomId(nextRoomId ?? null);
+      setPlayers(nextPlayers);
+      setLatestGameStart({ roomId: nextRoomId, players: nextPlayers });
+      appendDebugEvent(ServerEvents.GAME_START, `roomId=${nextRoomId} players=${nextPlayers.length}`);
     };
 
-    const onGameStart = () => {
-      appendDebugEvent(ServerEvents.GAME_START);
+    const onPlayerInput = (payload: PlayerInputPayload) => {
+      if (!payload?.playerId) return;
+      setLatestPlayerInput(payload);
+
+      const now = Date.now();
+      if (now - lastInputLogAt.current >= 500) {
+        appendDebugEvent(ServerEvents.PLAYER_INPUT, `player=${payload.playerId.slice(0, 6)} tilt=(${payload.tiltX.toFixed(2)}, ${payload.tiltY.toFixed(2)})`);
+        lastInputLogAt.current = now;
+      }
     };
 
     const onError = (err: SocketErrorPayload) => {
@@ -103,7 +117,7 @@ export const useGameSocket = () => {
     socket.on(ServerEvents.ROOM_CREATED, onRoomCreated);
     socket.on(ServerEvents.PLAYER_LIST, flexPlayerType);
     socket.on(ServerEvents.GAME_START, onGameStart);
-    socket.on(ServerEvents.GAME_STATE, onGameState);
+    socket.on(ServerEvents.PLAYER_INPUT, onPlayerInput);
     socket.on(ServerEvents.ERROR, onError);
 
     return () => {
@@ -112,11 +126,11 @@ export const useGameSocket = () => {
       socket.off(ServerEvents.ROOM_CREATED, onRoomCreated);
       socket.off(ServerEvents.PLAYER_LIST, flexPlayerType);
       socket.off(ServerEvents.GAME_START, onGameStart);
-      socket.off(ServerEvents.GAME_STATE, onGameState);
+      socket.off(ServerEvents.PLAYER_INPUT, onPlayerInput);
       socket.off(ServerEvents.ERROR, onError);
       // We don't disconnect entirely here, since navigating between pages keeps the socket alive
     };
-  }, []);
+  }, [roomIdHint]);
 
   const createRoom = () => {
     appendDebugEvent('emit:createRoom');
@@ -134,7 +148,8 @@ export const useGameSocket = () => {
     isConnected,
     roomId,
     players,
-    gameState,
+    latestGameStart,
+    latestPlayerInput,
     error,
     debugEvents: ENABLE_SOCKET_TIMELINE ? debugEvents : [],
     createRoom,
