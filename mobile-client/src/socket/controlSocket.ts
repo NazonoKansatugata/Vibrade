@@ -39,11 +39,12 @@ class ControlSocket {
   }
 
   sendInput(tiltX: number, tiltY: number, shakePower: number) {
-    if (!this.socket || !this.socket.connected) return;
+    if (!this.socket || !this.socket.connected || !this.currentRoomId) return;
     
     // In our new architecture, tilt and launch are separate events.
     // Send continuous tilt
     this.socket.emit(ClientEvents.CONTROL_INPUT, { 
+      roomId: this.currentRoomId,
       tiltX, 
       tiltY, 
       timestamp: Date.now() 

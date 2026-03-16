@@ -1,9 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { ClientEvents, ServerEvents } from './events.js';
 import { roomManager } from '../room/roomManager.js';
-import { inputHandler } from '../input/inputHandler.js';
-import { gestureDetector } from '../input/gestureDetector.js';
-import { gameManager } from '../game/gameState.js';
 
 export function registerSocketHandlers(io: Server) {
   io.on('connection', (socket: Socket) => {
@@ -14,9 +11,6 @@ export function registerSocketHandlers(io: Server) {
       // 1. Host creates a new room
       const room = roomManager.createRoom(socket.id);
       socket.join(room.roomId);
-      
-      // Initialize Game State for this room
-      gameManager.createGame(room.roomId);
 
       console.log(`[Room Created] Room ID: ${room.roomId} by Host: ${socket.id}`);
       
@@ -27,21 +21,13 @@ export function registerSocketHandlers(io: Server) {
     socket.on(ClientEvents.START_GAME, ({ roomId }: { roomId: string }) => {
       // Host requests game start
       const room = roomManager.getRoom(roomId);
-      const game = gameManager.getGame(roomId);
-      
-      if (room && room.hostSocketId === socket.id && game && game.status === 'waiting') {
-        
-        // Spawn all current players in the room
-        room.players.forEach(p => {
-          // Give a minimum initial power so battle can start without shake-launch.
-          gameManager.spawnBey(roomId, p.socketId, 0.35); 
+
+      if (room && room.hostSocketId === socket.id) {
+        // PC-side authoritative physics: server only coordinates room lifecycle and input relay.
+        io.to(roomId).emit(ServerEvents.GAME_START, {
+          roomId,
+          players: room.players
         });
-
-        // Start immediately on host action.
-        gameManager.markGameStarted(roomId);
-
-        // Notify everyone in the room (including mobile clients)
-        io.to(roomId).emit(ServerEvents.GAME_START);
         console.log(`[Game Started] Room ID: ${roomId}`);
       }
     });
@@ -51,12 +37,6 @@ export function registerSocketHandlers(io: Server) {
       const room = roomManager.getRoom(roomId);
       if (!room) {
         socket.emit(ServerEvents.ERROR, { code: 'NOT_FOUND', message: 'Room not found' });
-        return;
-      }
-
-      const game = gameManager.getGame(roomId);
-      if (game && game.status !== 'waiting') {
-        socket.emit(ServerEvents.ERROR, { code: 'GAME_ALREADY_STARTED', message: 'This game has already started.' });
         return;
       }
 
@@ -78,39 +58,38 @@ export function registerSocketHandlers(io: Server) {
       });
     });
 
-    socket.on(ClientEvents.CONTROL_INPUT, (data: { tiltX: number, tiltY: number, timestamp: number }) => {
-      inputHandler.updateInput(socket.id, data.tiltX, data.tiltY, data.timestamp);
+    socket.on(ClientEvents.CONTROL_INPUT, (data: { roomId?: string, tiltX: number, tiltY: number, timestamp: number }) => {
+      const context = roomManager.getPlayerContextBySocketId(socket.id);
+      const roomId = data.roomId || context?.roomId;
+      const playerId = context?.player.id;
+
+      if (!roomId || !playerId) {
+        return;
+      }
+
+      io.to(roomId).emit(ServerEvents.PLAYER_INPUT, {
+        roomId,
+        playerId,
+        tiltX: data.tiltX,
+        tiltY: data.tiltY,
+        timestamp: data.timestamp || Date.now()
+      });
     });
 
     socket.on(ClientEvents.LAUNCH_BEY, (data: { roomId: string, power: number, timestamp: number }) => {
-      // Validate launch constraints (cooldowns, normalization)
-      const { valid, power } = gestureDetector.validateLaunch(socket.id, data.power, data.timestamp);
-      
-      if (valid) {
-        const bey = gameManager.applyLaunch(data.roomId, socket.id, power);
-        if (bey) {
-           const game = gameManager.getGame(data.roomId);
-           if (game?.status === 'armed') {
-             gameManager.markGameStarted(data.roomId);
-             console.log(`[Game Started] Room ID: ${data.roomId}`);
-           }
-           console.log(`[Launch Validated] Player ${socket.id} launched with power ${power}. Spin: ${bey.spinPower}`);
-        } else {
-           socket.emit(ServerEvents.ERROR, { code: 'INVALID_STATE', message: 'You do not have an active beyblade in this game.' });
-        }
-      } else {
-        console.log(`[Launch Rejected] Player ${socket.id} raw=${data.power} room=${data.roomId}`);
-      }
+      // Launch is handled in PC physics for now. Keep relay for future use/debug visibility.
+      io.to(data.roomId).emit(ClientEvents.LAUNCH_BEY, {
+        playerSocketId: socket.id,
+        power: data.power,
+        timestamp: data.timestamp || Date.now()
+      });
     });
 
     // --- Disconnect Handling ---
     socket.on(ClientEvents.DISCONNECT, () => {
-      inputHandler.removePlayer(socket.id);
-      gestureDetector.removePlayer(socket.id);
       // Case 1: Was it a Host? If host disconnects, destroy room
       const destroyedRoomId = roomManager.removeRoomByHostId(socket.id);
       if (destroyedRoomId) {
-        gameManager.removeGame(destroyedRoomId); // cleanup game memory
         console.log(`[Room Destroyed] Host disconnected. Room ID: ${destroyedRoomId}`);
         io.to(destroyedRoomId).emit(ServerEvents.ERROR, { code: 'HOST_DISCONNECTED', message: 'The host has left the game.' });
         io.socketsLeave(destroyedRoomId); // force everyone out of the socket.io room
@@ -121,9 +100,6 @@ export function registerSocketHandlers(io: Server) {
       const removeResult = roomManager.removePlayer(socket.id);
       if (removeResult) {
         console.log(`[Player Left] ID: ${socket.id} left Room: ${removeResult.roomId}`);
-        // Remove from physics engine so they don't become ghost beys
-        gameManager.removeBey(removeResult.roomId, socket.id);
-
         // Notify remaining players and host
         io.to(removeResult.roomId).emit(ServerEvents.PLAYER_LIST, {
           roomId: removeResult.roomId,
