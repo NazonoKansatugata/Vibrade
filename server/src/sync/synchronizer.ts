@@ -27,7 +27,8 @@ export class Synchronizer {
         },
         spinPower: Math.round(bey.spinPower), // Integers are smaller
         energy: Math.round(bey.energy),
-        isActive: bey.isActive
+        isActive: bey.isActive,
+        hasLaunched: bey.hasLaunched
       };
     }
 

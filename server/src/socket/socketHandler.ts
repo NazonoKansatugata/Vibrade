@@ -87,11 +87,8 @@ export function registerSocketHandlers(io: Server) {
       const { valid, power } = gestureDetector.validateLaunch(socket.id, data.power, data.timestamp);
       
       if (valid) {
-        // Apply launch power to the Beyblade in the physics engine
-        const game = gameManager.getGame(data.roomId);
-        const bey = game?.beys[socket.id];
+        const bey = gameManager.applyLaunch(data.roomId, socket.id, power);
         if (bey) {
-           bey.spinPower += (power * 100);
            console.log(`[Launch Validated] Player ${socket.id} launched with power ${power}. Spin: ${bey.spinPower}`);
         } else {
            socket.emit(ServerEvents.ERROR, { code: 'INVALID_STATE', message: 'You do not have an active beyblade in this game.' });

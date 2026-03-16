@@ -63,8 +63,15 @@ export class GameLoop {
     CollisionEngine.handleCollisions(game.roomId, game.beys, this.broadcaster);
 
     // 3. Check win condition
-     const activeBeys = Object.values(game.beys).filter(b => b.isActive);
-     const totalBeys = Object.keys(game.beys).length;
+     const allBeys = Object.values(game.beys);
+     const activeBeys = allBeys.filter(b => b.isActive);
+     const launchedBeys = allBeys.filter(b => b.hasLaunched);
+     const totalBeys = allBeys.length;
+
+     if (launchedBeys.length === 0) {
+       this.broadcaster.broadcastGameState(game.roomId, game, this.tickCount);
+       return;
+     }
 
      // For one-player debug sessions, keep the game running instead of ending immediately.
      if (activeBeys.length === 0) {
@@ -75,7 +82,7 @@ export class GameLoop {
        return;
      }
 
-     if (activeBeys.length === 1 && totalBeys > 1) {
+     if (activeBeys.length === 1 && totalBeys > 1 && launchedBeys.length === totalBeys) {
        const winnerId = activeBeys[0]?.id ?? null;
        game.status = 'ended';
        gameManager.markGameEnded(game.roomId, winnerId);

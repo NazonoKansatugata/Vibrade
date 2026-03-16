@@ -13,6 +13,7 @@ export interface BeybladeState {
   spinPower: number; // 0 to 100+ (affects control and damage)
   energy: number;    // HP (when 0, bey stops)
   isActive: boolean; // if false, bey is eliminated
+  hasLaunched: boolean;
   radius: number;    // collision radius
 }
 
@@ -64,9 +65,23 @@ export class GameManager {
       velocity: { x: 0, y: 0 },
       spinPower: power * 100, // Launch power translates to spin/energy
       energy: 100,            // Base HP
-      isActive: true,
+      isActive: power > 0,
+      hasLaunched: power > 0,
       radius: 20              // Base size of Beyblade
     };
+  }
+
+  applyLaunch(roomId: string, playerId: string, power: number) {
+    const game = this.games[roomId];
+    const bey = game?.beys[playerId];
+    if (!bey) return null;
+
+    bey.spinPower = Math.max(bey.spinPower, power * 100);
+    bey.energy = Math.max(bey.energy, 100);
+    bey.isActive = true;
+    bey.hasLaunched = true;
+
+    return bey;
   }
 
   removeBey(roomId: string, playerId: string) {
