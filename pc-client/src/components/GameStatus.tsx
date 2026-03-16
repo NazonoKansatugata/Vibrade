@@ -8,6 +8,7 @@ interface GameStatusProps {
 const GameStatus = ({ roomId, gameState }: GameStatusProps) => {
   const playerCount = gameState?.players.length ?? 0
   const activeBeys = gameState?.beys.filter((b) => b.energy > 0).length ?? 0
+  const isLaunchReady = gameState?.status === 'armed'
 
   return (
     <div className="game-status">
@@ -21,10 +22,20 @@ const GameStatus = ({ roomId, gameState }: GameStatusProps) => {
             </span>
             <p>残り {activeBeys} / {playerCount} 台</p>
           </>
+        ) : isLaunchReady ? (
+          <>
+            <span className="game-status__badge game-status__badge--waiting">
+              READY TO LAUNCH
+            </span>
+            <p>スマホを振って発射してください</p>
+          </>
         ) : (
-          <span className="game-status__badge game-status__badge--waiting">
-            WAITING
-          </span>
+          <>
+            <span className="game-status__badge game-status__badge--waiting">
+              WAITING
+            </span>
+            <p>ホストの開始を待機中</p>
+          </>
         )}
       </div>
 

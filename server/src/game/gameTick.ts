@@ -41,8 +41,8 @@ export class GameLoop {
 
       const game = gameManager.getGame(roomId);
       
-      // If no game exists for a room, or it's not playing, skip tick processing
-      if (!game || game.status !== 'playing') continue;
+      // Waiting rooms stay in the lobby. Armed rooms broadcast launch-ready state until a launch occurs.
+      if (!game || game.status === 'waiting' || game.status === 'ended') continue;
 
       this.processGameTick(game);
     }

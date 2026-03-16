@@ -24,6 +24,7 @@ export interface GameState {
   tick: number
   players: Player[]
   beys: Bey[]
+  status: 'waiting' | 'armed' | 'playing' | 'ended'
   isGameActive: boolean
   winnerId?: string
 }

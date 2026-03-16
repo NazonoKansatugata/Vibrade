@@ -20,7 +20,7 @@ export interface BeybladeState {
 export interface GameState {
   roomId: string;
   beys: Record<string, BeybladeState>; // key: playerId
-  status: 'waiting' | 'playing' | 'ended';
+  status: 'waiting' | 'armed' | 'playing' | 'ended';
   arenaRadius: number;
   winnerId?: string | null;
 }
@@ -94,6 +94,14 @@ export class GameManager {
   markGameStarted(roomId: string) {
     const game = this.games[roomId];
     if (game) game.status = 'playing';
+  }
+
+  markGameArmed(roomId: string) {
+    const game = this.games[roomId];
+    if (game) {
+      game.status = 'armed';
+      game.winnerId = null;
+    }
   }
 
   markGameEnded(roomId: string, winnerId: string | null = null) {

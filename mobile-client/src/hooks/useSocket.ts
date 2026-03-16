@@ -12,6 +12,7 @@ export interface SocketDebugEvent {
 
 export interface GameStateData {
   roomId: string;
+  status: 'waiting' | 'armed' | 'playing' | 'ended';
   isGameActive: boolean;
   tick: number;
   winnerId?: string | null;
@@ -61,20 +62,21 @@ export const useSocket = (roomId: string, playerName: string) => {
     // ゲーム状態の受信
     const onGameState = (state: GameStateData) => {
       setGameState(state);
-      appendDebugEvent(ServerEvents.GAME_STATE, `tick=${state.tick} active=${state.isGameActive}`);
+      appendDebugEvent(ServerEvents.GAME_STATE, `tick=${state.tick} status=${state.status} active=${state.isGameActive}`);
     };
 
-    // GAME_START が GAME_STATE より先に来ても表示を開始状態にできるようにする
+    // GAME_START が GAME_STATE より先に来ても発射待機状態にできるようにする
     const onGameStarted = () => {
       appendDebugEvent(ServerEvents.GAME_START);
       setGameState((prev) => {
         if (prev) {
-          return { ...prev, isGameActive: true };
+          return { ...prev, status: 'armed', isGameActive: false };
         }
 
         return {
           roomId,
-          isGameActive: true,
+          status: 'armed',
+          isGameActive: false,
           tick: 0,
           winnerId: null,
           beys: {},
