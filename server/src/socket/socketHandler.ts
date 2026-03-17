@@ -93,15 +93,26 @@ export function registerSocketHandlers(io: Server) {
         return;
       }
 
+      // Host-authoritative operation to prevent arbitrary clients from vibrating others.
+      if (room.hostSocketId !== socket.id) {
+        socket.emit(ServerEvents.ERROR, { code: 'UNAUTHORIZED', message: 'Only host can trigger vibration' });
+        return;
+      }
+
       const pattern = data.pattern && data.pattern.length > 0
         ? data.pattern
         : [200, 100, 200];
 
-      const requestedTargets = data.targetSocketIds ?? [];
+      const requestedTargets = Array.isArray(data.targetSocketIds) ? data.targetSocketIds : [];
       const allowedTargets = new Set(room.players.map((player) => player.socketId));
-      const targetSocketIds = requestedTargets.filter((targetId) => allowedTargets.has(targetId));
+      const targetSocketIds = Array.from(new Set(requestedTargets.filter((targetId) => allowedTargets.has(targetId))));
 
-      if (targetSocketIds.length > 0) {
+      if (requestedTargets.length > 0) {
+        if (targetSocketIds.length === 0) {
+          socket.emit(ServerEvents.ERROR, { code: 'INVALID_TARGETS', message: 'No valid target sockets in room' });
+          return;
+        }
+
         console.log(`[Vibrate Targeted] Room: ${data.roomId} targets: ${targetSocketIds.length} by: ${socket.id}`);
         targetSocketIds.forEach((targetId) => {
           io.to(targetId).emit(ServerEvents.VIBRATE, {
