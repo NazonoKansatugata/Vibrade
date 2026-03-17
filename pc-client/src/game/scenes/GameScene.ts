@@ -20,7 +20,8 @@ const COLLISION_RINGOUT_IMPACT_THRESHOLD = 2.6
 const BASE_DAMAGE = 7
 const IMPACT_MULTIPLIER = 0.45
 const BEY_RADIUS = 33
-const ATTACK_POINT_HIT_DOT = 0.88
+const ATTACK_POINT_ORBIT_RADIUS = 24
+const ATTACK_POINT_TARGET_PADDING = 12
 const ATTACK_POINT_DAMAGE_MULTIPLIER = 2.2
 const ATTACK_POINT_KNOCKBACK_MULTIPLIER = 1.75
 const ATTACK_POINT_SELF_RECOIL = 0.35
@@ -397,8 +398,21 @@ class GameScene extends Phaser.Scene {
         const aAttackY = Math.sin(a.attackAngle)
         const bAttackX = Math.cos(b.attackAngle)
         const bAttackY = Math.sin(b.attackAngle)
-        const aCriticalHit = aAttackX * nx + aAttackY * ny >= ATTACK_POINT_HIT_DOT
-        const bCriticalHit = bAttackX * -nx + bAttackY * -ny >= ATTACK_POINT_HIT_DOT
+        const aPointX = a.x + aAttackX * ATTACK_POINT_ORBIT_RADIUS
+        const aPointY = a.y + aAttackY * ATTACK_POINT_ORBIT_RADIUS
+        const bPointX = b.x + bAttackX * ATTACK_POINT_ORBIT_RADIUS
+        const bPointY = b.y + bAttackY * ATTACK_POINT_ORBIT_RADIUS
+
+        const aToBdx = b.x - aPointX
+        const aToBdy = b.y - aPointY
+        const bToAdx = a.x - bPointX
+        const bToAdy = a.y - bPointY
+        const aCriticalHit =
+          aToBdx * aToBdx + aToBdy * aToBdy
+          <= (b.radius + ATTACK_POINT_TARGET_PADDING) * (b.radius + ATTACK_POINT_TARGET_PADDING)
+        const bCriticalHit =
+          bToAdx * bToAdx + bToAdy * bToAdy
+          <= (a.radius + ATTACK_POINT_TARGET_PADDING) * (a.radius + ATTACK_POINT_TARGET_PADDING)
 
         if (aCriticalHit) {
           const bonus = impact * (ATTACK_POINT_KNOCKBACK_MULTIPLIER - 1)
