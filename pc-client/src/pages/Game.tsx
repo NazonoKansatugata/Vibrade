@@ -19,7 +19,7 @@ const Game = () => {
   const [actionFlash, setActionFlash] = useState<{ playerSocketId: string; power: number } | null>(null)
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const { latestGameStart, latestPlayerInput, latestPlayerInputs, players } = useGameSocket(resolvedRoomId, {
+  const { latestGameStart, latestPlayerInput, latestPlayerInputs, players, triggerVibrate } = useGameSocket(resolvedRoomId, {
     onLaunch: (payload) => {
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
       setActionFlash({ playerSocketId: payload.playerSocketId, power: payload.power })
@@ -89,6 +89,14 @@ const Game = () => {
             ⚡ Action — {players.find(p => p.id === actionFlash.playerSocketId)?.name ?? actionFlash.playerSocketId.slice(0, 6)} (power: {actionFlash.power.toFixed(2)})
           </div>
         )}
+
+        <button
+          className="btn btn--secondary"
+          style={{ marginBottom: '12px', width: '100%', borderColor: 'rgba(139, 92, 246, 0.3)', color: '#d8b4fe' }}
+          onClick={triggerVibrate}
+        >
+          スマホを振動（テスト）
+        </button>
 
         <button
           className="btn btn--secondary game-page__exit"

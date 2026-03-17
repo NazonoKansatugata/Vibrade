@@ -86,6 +86,15 @@ export function registerSocketHandlers(io: Server) {
       });
     });
 
+    socket.on(ClientEvents.TRIGGER_VIBRATE, (data: { roomId: string }) => {
+      console.log(`[Vibrate Triggered] Room: ${data.roomId} by: ${socket.id}`);
+      // Broadcast to all clients in the room (including mobiles)
+      io.to(data.roomId).emit(ServerEvents.VIBRATE, {
+        pattern: [200, 100, 200], // Default bread-pulse
+        timestamp: Date.now()
+      });
+    });
+
     // --- Disconnect Handling ---
     socket.on(ClientEvents.DISCONNECT, () => {
       // Case 1: Was it a Host? If host disconnects, destroy room

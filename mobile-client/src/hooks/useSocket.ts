@@ -101,11 +101,19 @@ export const useSocket = (roomId: string, playerName: string) => {
       appendDebugEvent(ServerEvents.ERROR, `${err.code}: ${err.message}`);
     };
 
+    const onVibrate = (data: { pattern?: number[] }) => {
+      appendDebugEvent(ServerEvents.VIBRATE);
+      if (navigator.vibrate) {
+        navigator.vibrate(data.pattern || [200, 100, 200]);
+      }
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on(ServerEvents.GAME_STATE, onGameState);
     socket.on(ServerEvents.GAME_START, onGameStarted);
     socket.on(ServerEvents.COLLISION, onCollision);
+    socket.on(ServerEvents.VIBRATE, onVibrate);
     socket.on(ServerEvents.ERROR, onError);
 
     return () => {
@@ -115,6 +123,7 @@ export const useSocket = (roomId: string, playerName: string) => {
       socket.off(ServerEvents.GAME_STATE, onGameState);
       socket.off(ServerEvents.GAME_START, onGameStarted);
       socket.off(ServerEvents.COLLISION, onCollision);
+      socket.off(ServerEvents.VIBRATE, onVibrate);
       socket.off(ServerEvents.ERROR, onError);
       controlSocket.disconnect();
     };
