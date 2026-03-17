@@ -10,8 +10,8 @@ export const createDemoGameState = (roomId: string): GameState => ({
     { id: 'p2', socketId: 'demo-2', name: 'Player 2', ready: true },
   ],
   beys: [
-    { id: 'b1', playerId: 'p1', x: 420, y: 320, vx: 2.2, vy: 1.7, energy: 100, rotation: 0 },
-    { id: 'b2', playerId: 'p2', x: 860, y: 400, vx: -2.1, vy: -1.4, energy: 96, rotation: 180 },
+    { id: 'b1', playerId: 'p1', x: 420, y: 320, vx: 2.2, vy: 1.7, energy: 100 },
+    { id: 'b2', playerId: 'p2', x: 860, y: 400, vx: -2.1, vy: -1.4, energy: 96 },
   ],
 })
 
@@ -44,7 +44,6 @@ export const advanceDemoGameState = (
       vx: nextVx,
       vy: nextVy,
       energy: nextEnergy,
-      rotation: ((bey.rotation ?? 0) + (index === 0 ? 14 : -17)) % 360,
     }
   })
 

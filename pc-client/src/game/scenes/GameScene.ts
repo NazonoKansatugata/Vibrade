@@ -17,7 +17,7 @@ const COLLISION_RINGOUT_MIN_TICKS = 6
 const COLLISION_RINGOUT_MAX_TICKS = 14
 const BASE_DAMAGE = 7
 const IMPACT_MULTIPLIER = 0.45
-const BEY_RADIUS = 20
+const BEY_RADIUS = 30
 
 interface RuntimeBey {
   id: string
@@ -49,6 +49,8 @@ class GameScene extends Phaser.Scene {
   private tick = 0
   private accumulatorMs = 0
   private lastFrameAt = 0
+  private isSceneReady = false
+  private pendingStartPayload?: GameStartPayload
 
   constructor(roomId: string, onStateChange?: (gameState: GameState) => void) {
     super({ key: 'game-scene' })
@@ -57,12 +59,21 @@ class GameScene extends Phaser.Scene {
   }
 
   create() {
+    this.isSceneReady = true
     this.cameras.main.setBackgroundColor('#0f172a')
     this.buildScene(this.scale.width, this.scale.height)
     this.infoLabel?.setText('Waiting for host to start')
 
+    if (this.pendingStartPayload) {
+      const payload = this.pendingStartPayload
+      this.pendingStartPayload = undefined
+      this.startSimulation(payload)
+    }
+
     this.scale.on('resize', this.handleResize, this)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.isSceneReady = false
+      this.pendingStartPayload = undefined
       this.beySprites.forEach((bey) => bey.destroy())
       this.beySprites.clear()
       this.scale.off('resize', this.handleResize, this)
@@ -90,6 +101,11 @@ class GameScene extends Phaser.Scene {
 
   startSimulation(payload: GameStartPayload) {
     if (payload.roomId !== this.roomId) {
+      return
+    }
+
+    if (!this.isSceneReady) {
+      this.pendingStartPayload = payload
       return
     }
 
@@ -378,7 +394,6 @@ class GameScene extends Phaser.Scene {
       vx: bey.vx,
       vy: bey.vy,
       energy: bey.energy,
-      rotation: this.calculateRotation(bey.vx, bey.vy),
     }))
 
     return {
@@ -427,13 +442,6 @@ class GameScene extends Phaser.Scene {
     }
 
     return false
-  }
-
-  private calculateRotation(vx: number, vy: number) {
-    if (vx === 0 && vy === 0) {
-      return 0
-    }
-    return (Math.atan2(vy, vx) * 180) / Math.PI
   }
 
   private projectX(x: number) {
