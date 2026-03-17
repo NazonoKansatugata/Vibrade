@@ -8,8 +8,7 @@ const TICK_MS = 33
 const FRICTION = 0.98
 const ENERGY_DECAY = 0.05
 const BASE_ACCEL = 1.5
-const MAX_SPEED = 20
-const BOOST_FORCE = 50.0
+const BOOST_FORCE = 8.0
 const COLLISION_RESTITUTION = 0.82
 const COLLISION_KNOCKBACK_BOOST = 1.35
 const MIN_COLLISION_KNOCKBACK = 1.8
@@ -288,15 +287,8 @@ class GameScene extends Phaser.Scene {
       bey.vx += tiltX * BASE_ACCEL * controlFactor
       bey.vy += tiltY * BASE_ACCEL * controlFactor
 
-      const speedSq = bey.vx * bey.vx + bey.vy * bey.vy
-      if (speedSq > MAX_SPEED * MAX_SPEED) {
-        const speed = Math.sqrt(speedSq)
-        bey.vx = (bey.vx / speed) * MAX_SPEED
-        bey.vy = (bey.vy / speed) * MAX_SPEED
-      }
-
       const speed = Math.sqrt(bey.vx * bey.vx + bey.vy * bey.vy)
-      bey.attackAngle = (bey.attackAngle + bey.attackSpinRate * (0.8 + speed / MAX_SPEED)) % (Math.PI * 2)
+      bey.attackAngle = (bey.attackAngle + bey.attackSpinRate * (0.8 + speed / 20)) % (Math.PI * 2)
 
       bey.x += bey.vx
       bey.y += bey.vy
@@ -370,19 +362,8 @@ class GameScene extends Phaser.Scene {
         b.vx += knockbackStrength * nx
         b.vy += knockbackStrength * ny
 
-        const aSpeedSq = a.vx * a.vx + a.vy * a.vy
-        if (aSpeedSq > MAX_SPEED * MAX_SPEED) {
-          const aSpeed = Math.sqrt(aSpeedSq)
-          a.vx = (a.vx / aSpeed) * MAX_SPEED
-          a.vy = (a.vy / aSpeed) * MAX_SPEED
-        }
-
-        const bSpeedSq = b.vx * b.vx + b.vy * b.vy
-        if (bSpeedSq > MAX_SPEED * MAX_SPEED) {
-          const bSpeed = Math.sqrt(bSpeedSq)
-          b.vx = (b.vx / bSpeed) * MAX_SPEED
-          b.vy = (b.vy / bSpeed) * MAX_SPEED
-        }
+        b.vx += knockbackStrength * nx
+        b.vy += knockbackStrength * ny
 
         const penetration = minDist - dist
         const correction = (Math.max(penetration - 0.1, 0) / 2) * 0.35
