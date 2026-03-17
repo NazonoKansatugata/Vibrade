@@ -67,25 +67,32 @@ class BeySprite {
   }
 
   private pickColor(id: string, beyType: BeyState['beyType']) {
+    // 1. 内側の色：個人を識別するランダムな色
     const innerPalettes = [
-      0x0f766e, // teal
-      0xc2410c, // orange
-      0x4d7c0f, // lime
-      0x9f1239, // rose
-      0x4338ca, // indigo
-      0x7e22ce, // purple
+      0x0f766e, // Teal
+      0x1d4ed8, // Blue
+      0xc2410c, // Orange
+      0x4d7c0f, // Green
+      0x9f1239, // Rose
+      0x7e22ce, // Purple
+      0x0369a1, // Sky
+      0xbe185d, // Pink
     ]
 
+    // 2. 外側の色：タイプに基づいた系統色
     const typeOuterPalettes: Record<string, number[]> = {
-      balance: [0x94a3b8, 0x64748b, 0x475569], // slate/gray
-      power: [0xf43f5e, 0xef4444, 0xf97316],   // rose/red/orange
-      defense: [0x0ea5e9, 0x0284c7, 0x2563eb], // sky/blue
-      weight: [0x10b981, 0x22c55e, 0x84cc16],  // emerald/green/lime
+      balance: [0xfacc15, 0xeab308, 0xfde047, 0xf59e0b], // 黄色・アンバー系
+      power:   [0xef4444, 0xf97316, 0xd97706, 0xdc2626], // 赤・オレンジ系
+      defense: [0x0ea5e9, 0x2563eb, 0x0284c7, 0x3b82f6], // 青・シアン系
+      weight:  [0x22c55e, 0x84cc16, 0x10b981, 0x059669], // 緑・ライム系
     }
 
     const sum = Array.from(id).reduce((acc, char) => acc + char.charCodeAt(0), 0)
+    
+    // 内側の決定
     const inner = innerPalettes[sum % innerPalettes.length]
     
+    // 外側の決定
     const outerList = typeOuterPalettes[beyType || 'balance'] || typeOuterPalettes.balance
     const outer = outerList[sum % outerList.length]
 
