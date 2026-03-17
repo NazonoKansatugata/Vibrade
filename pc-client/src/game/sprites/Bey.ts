@@ -10,22 +10,23 @@ class BeySprite {
   private readonly nameLabel: Phaser.GameObjects.Text
   private spinVelocity = 4
 
-  constructor(scene: Phaser.Scene, id: string, playerName: string) {
+  constructor(scene: Phaser.Scene, id: string, playerName: string, pixelScale: number) {
     const palette = this.pickColor(id)
 
-    this.body = scene.add.circle(0, 0, 30, palette.outer, 1)
-    this.body.setStrokeStyle(6, 0xffffff, 0.9)
+    // BEY_RADIUS = 72 に合わせる
+    this.body = scene.add.circle(0, 0, 72 * pixelScale, palette.outer, 1)
+    this.body.setStrokeStyle(6 * pixelScale, 0xffffff, 0.9)
 
-    this.ring = scene.add.circle(0, 0, 20, palette.inner, 1)
-    this.ring.setStrokeStyle(3, 0xffffff, 0.4)
+    this.ring = scene.add.circle(0, 0, 48 * pixelScale, palette.inner, 1)
+    this.ring.setStrokeStyle(3 * pixelScale, 0xffffff, 0.4)
 
-    this.core = scene.add.circle(0, 0, 8, 0xf8fafc, 1)
-    this.attackPoint = scene.add.circle(0, -24, 5, 0xef4444, 1)
-    this.attackPoint.setStrokeStyle(2, 0xfef2f2, 0.9)
+    this.core = scene.add.circle(0, 0, 18 * pixelScale, 0xf8fafc, 1)
+    this.attackPoint = scene.add.circle(0, -54 * pixelScale, 12 * pixelScale, 0xef4444, 1)
+    this.attackPoint.setStrokeStyle(4 * pixelScale, 0xfef2f2, 0.9)
 
-    this.nameLabel = scene.add.text(0, -54, playerName, {
+    this.nameLabel = scene.add.text(0, -120 * pixelScale, playerName, {
       fontFamily: 'Segoe UI',
-      fontSize: '14px',
+      fontSize: `${Math.round(28 * pixelScale)}px`,
       color: '#e2e8f0',
       fontStyle: 'bold',
       align: 'center',
@@ -42,13 +43,13 @@ class BeySprite {
     this.root.setDepth(10)
   }
 
-  applyState(x: number, y: number, state: BeyState) {
+  applyState(x: number, y: number, state: BeyState, pixelScale: number) {
     this.root.setPosition(x, y)
 
     const speed = Math.sqrt(state.vx * state.vx + state.vy * state.vy)
     this.spinVelocity = Math.max(1.5, speed * 0.9)
     const attackAngle = state.attackAngle ?? 0
-    const orbitRadius = 24
+    const orbitRadius = 54 * pixelScale // ATTACK_POINT_ORBIT_RADIUS = 54
     this.attackPoint.setPosition(
       Math.cos(attackAngle) * orbitRadius,
       Math.sin(attackAngle) * orbitRadius,
