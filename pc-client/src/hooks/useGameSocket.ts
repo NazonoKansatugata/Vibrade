@@ -173,6 +173,13 @@ export const useGameSocket = (roomIdHint?: string, options?: GameSocketOptions) 
     }
   };
 
+  const triggerVibrate = () => {
+    if (roomId) {
+      appendDebugEvent('emit:triggerVibrate', `roomId=${roomId}`);
+      gameSocket.triggerVibrate(roomId);
+    }
+  };
+
   return {
     isConnected,
     roomId,
@@ -184,6 +191,7 @@ export const useGameSocket = (roomIdHint?: string, options?: GameSocketOptions) 
     error,
     debugEvents: ENABLE_SOCKET_TIMELINE ? debugEvents : [],
     createRoom,
-    startGame
+    startGame,
+    triggerVibrate
   };
 };

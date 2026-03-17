@@ -6,6 +6,7 @@ export const ClientEvents = {
   CONTROL_INPUT: 'controlInput',
   LAUNCH_BEY: 'launchBey',
   START_GAME: 'startGame',
+  TRIGGER_VIBRATE: 'triggerVibrate',
   DISCONNECT: 'disconnect'
 } as const;
 
@@ -16,5 +17,7 @@ export const ServerEvents = {
   GAME_STATE: 'gameState',
   COLLISION: 'collision',
   GAME_START: 'gameStart',
+  LAUNCH_BEY: 'launchBey',
+  VIBRATE: 'vibrate',
   ERROR: 'error'
 } as const;
