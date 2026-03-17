@@ -86,11 +86,35 @@ export function registerSocketHandlers(io: Server) {
       });
     });
 
-    socket.on(ClientEvents.TRIGGER_VIBRATE, (data: { roomId: string }) => {
-      console.log(`[Vibrate Triggered] Room: ${data.roomId} by: ${socket.id}`);
-      // Broadcast to all clients in the room (including mobiles)
+    socket.on(ClientEvents.TRIGGER_VIBRATE, (data: { roomId: string; targetSocketIds?: string[]; pattern?: number[] }) => {
+      const room = roomManager.getRoom(data.roomId);
+      if (!room) {
+        socket.emit(ServerEvents.ERROR, { code: 'NOT_FOUND', message: 'Room not found' });
+        return;
+      }
+
+      const pattern = data.pattern && data.pattern.length > 0
+        ? data.pattern
+        : [200, 100, 200];
+
+      const requestedTargets = data.targetSocketIds ?? [];
+      const allowedTargets = new Set(room.players.map((player) => player.socketId));
+      const targetSocketIds = requestedTargets.filter((targetId) => allowedTargets.has(targetId));
+
+      if (targetSocketIds.length > 0) {
+        console.log(`[Vibrate Targeted] Room: ${data.roomId} targets: ${targetSocketIds.length} by: ${socket.id}`);
+        targetSocketIds.forEach((targetId) => {
+          io.to(targetId).emit(ServerEvents.VIBRATE, {
+            pattern,
+            timestamp: Date.now()
+          });
+        });
+        return;
+      }
+
+      console.log(`[Vibrate Broadcast] Room: ${data.roomId} by: ${socket.id}`);
       io.to(data.roomId).emit(ServerEvents.VIBRATE, {
-        pattern: [200, 100, 200], // Default bread-pulse
+        pattern,
         timestamp: Date.now()
       });
     });

@@ -24,12 +24,18 @@ const PENALTY_MIN_ENERGY_FACTOR = 0.3
 const OTEZUKI_ENERGY_FACTOR = 0.7
 // 1280x720基準の描画サイズ(外円半径約33px)をワールド座標へ合わせる
 const BEY_RADIUS = 72
+const HAPTIC_COLLISION_COOLDOWN_MS = 180
 const ATTACK_POINT_ORBIT_RADIUS = 54
 const ATTACK_POINT_TARGET_PADDING = 34
 const ATTACK_POINT_DAMAGE_MULTIPLIER = 2.35
 const ATTACK_POINT_KNOCKBACK_MULTIPLIER = 1.9
 const ATTACK_POINT_SELF_RECOIL = 0.3
 const ARENA_RENDER_RADIUS_SCALE = 0.34
+
+export interface CollisionEventPayload {
+  playerIds: string[]
+  kind: 'bey' | 'wall'
+}
 
 interface RuntimeBey {
   id: string
@@ -50,6 +56,7 @@ interface RuntimeBey {
 class GameScene extends Phaser.Scene {
   private readonly roomId: string
   private readonly onStateChange?: (gameState: GameState) => void
+  private readonly onCollision?: (payload: CollisionEventPayload) => void
   private arenaRadius: number = 500
   private unitToPixel: number = 1
   private arena?: Phaser.GameObjects.Arc
@@ -72,11 +79,17 @@ class GameScene extends Phaser.Scene {
   private shootStartTime: number = 0
   private countdownState: '3' | '2' | '1' | 'GO' | 'SHOOT' | 'NONE' = 'NONE'
   private lastCountdownUpdateAt: number = 0
+  private lastCollisionHapticAt = new Map<string, number>()
 
-  constructor(roomId: string, onStateChange?: (gameState: GameState) => void) {
+  constructor(
+    roomId: string,
+    onStateChange?: (gameState: GameState) => void,
+    onCollision?: (payload: CollisionEventPayload) => void,
+  ) {
     super({ key: 'game-scene' })
     this.roomId = roomId
     this.onStateChange = onStateChange
+    this.onCollision = onCollision
   }
 
   create() {
@@ -250,6 +263,7 @@ class GameScene extends Phaser.Scene {
     this.status = 'armed'
     this.isGameActive = true
     this.winnerId = undefined
+    this.lastCollisionHapticAt.clear()
     this.shootStartTime = 0
     this.countdownState = 'NONE'
     this.lastCountdownUpdateAt = 0
@@ -474,7 +488,12 @@ class GameScene extends Phaser.Scene {
         return
       }
 
-      if (this.handleArenaBoundary(bey)) {
+      const boundaryResult = this.handleArenaBoundary(bey)
+      if (boundaryResult !== 'none') {
+        this.emitCollisionHaptic([playerId], 'wall')
+      }
+
+      if (boundaryResult === 'ringout') {
         bey.isActive = false
         bey.energy = 0
         bey.vx = 0
@@ -542,6 +561,7 @@ class GameScene extends Phaser.Scene {
         b.y += ny * correction
 
         const impact = knockbackStrength
+  this.emitCollisionHaptic([a.playerId, b.playerId], 'bey')
 
         const aAttackX = Math.cos(a.attackAngle)
         const aAttackY = Math.sin(a.attackAngle)
@@ -670,13 +690,33 @@ class GameScene extends Phaser.Scene {
     this.renderGameState()
   }
 
-  private handleArenaBoundary(bey: RuntimeBey) {
+  private emitCollisionHaptic(playerIds: string[], kind: CollisionEventPayload['kind']) {
+    if (!this.onCollision) {
+      return
+    }
+
+    const now = this.game.loop.time || Date.now()
+    const filtered = playerIds.filter((playerId) => {
+      const lastAt = this.lastCollisionHapticAt.get(playerId) ?? 0
+      if (now - lastAt < HAPTIC_COLLISION_COOLDOWN_MS) {
+        return false
+      }
+      this.lastCollisionHapticAt.set(playerId, now)
+      return true
+    })
+
+    if (filtered.length > 0) {
+      this.onCollision({ playerIds: filtered, kind })
+    }
+  }
+
+  private handleArenaBoundary(bey: RuntimeBey): 'none' | 'wall' | 'ringout' {
     const distSq = bey.x * bey.x + bey.y * bey.y
     const wallContactRadius = this.arenaRadius - bey.radius
     const wallContactSq = wallContactRadius * wallContactRadius
 
     if (distSq <= wallContactSq) {
-      return false
+      return 'none'
     }
 
     const dist = Math.sqrt(distSq)
@@ -685,7 +725,7 @@ class GameScene extends Phaser.Scene {
 
     // 衝突直後のみ、壁を越えて押し出されたら場外負け
     if (bey.ringoutArmedTicks > 0 && dist > this.arenaRadius) {
-      return true
+      return 'ringout'
     }
 
     // 通常は壁で反射して場内へ戻す
@@ -698,7 +738,7 @@ class GameScene extends Phaser.Scene {
       bey.vy -= (1 + WALL_RESTITUTION) * outwardSpeed * ny
     }
 
-    return false
+    return 'wall'
   }
 
   private projectX(x: number) {
