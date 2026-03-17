@@ -51,6 +51,7 @@ interface RuntimeBey {
   attackAngle: number
   attackSpinRate: number
   launchTime?: number
+  beyType: GameState['players'][0]['beyType']
 }
 
 class GameScene extends Phaser.Scene {
@@ -237,7 +238,8 @@ class GameScene extends Phaser.Scene {
           remainingBuffPool -= buff
         }
         
-        bey.energy = BASE_ENERGY * energyFactor
+        const baseEnergy = bey.beyType === 'weight' ? BASE_ENERGY * 1.2 : BASE_ENERGY
+        bey.energy = baseEnergy * energyFactor
       }
     })
 
@@ -289,6 +291,7 @@ class GameScene extends Phaser.Scene {
         attackAngle: ((index * Math.PI) / 2) % (Math.PI * 2),
         attackSpinRate: 0.18 + (index % 3) * 0.03,
         launchTime: undefined,
+        beyType: player.beyType ?? 'power',
       })
     })
 
@@ -540,10 +543,14 @@ class GameScene extends Phaser.Scene {
 
         // 互いに離れる向きでも重なっている場合は最小ノックバックで押し返す
         const closingSpeed = Math.max(0, -velAlongNormal)
-        const knockbackStrength = Math.max(
+        let knockbackStrength = Math.max(
           MIN_COLLISION_KNOCKBACK,
           ((1 + COLLISION_RESTITUTION) * closingSpeed) / 2 * COLLISION_KNOCKBACK_BOOST,
         )
+
+        // 防御型の吹き飛ばし補正
+        if (a.beyType === 'defense') knockbackStrength *= 1.4
+        if (b.beyType === 'defense') knockbackStrength *= 1.4
 
         a.vx -= knockbackStrength * nx
         a.vy -= knockbackStrength * ny
@@ -617,12 +624,16 @@ class GameScene extends Phaser.Scene {
         }
 
         const aAdv = a.energy / Math.max(1, b.energy)
-        const damageToA =
+        let damageToA =
           (BASE_DAMAGE + (impact * IMPACT_MULTIPLIER) / Math.max(0.2, aAdv))
           * (bCriticalHit ? ATTACK_POINT_DAMAGE_MULTIPLIER : 1)
-        const damageToB =
+        let damageToB =
           (BASE_DAMAGE + impact * IMPACT_MULTIPLIER * Math.max(0.2, aAdv))
           * (aCriticalHit ? ATTACK_POINT_DAMAGE_MULTIPLIER : 1)
+
+        // パワー型の攻撃力補正 (攻撃力アップ)
+        if (a.beyType === 'power') damageToB *= 1.25
+        if (b.beyType === 'power') damageToA *= 1.25
 
         a.energy = Math.max(0, a.energy - damageToA)
         b.energy = Math.max(0, b.energy - damageToB)
@@ -671,6 +682,7 @@ class GameScene extends Phaser.Scene {
       vy: bey.vy,
       energy: bey.energy,
       attackAngle: bey.attackAngle,
+      beyType: bey.beyType,
     }))
 
     return {
