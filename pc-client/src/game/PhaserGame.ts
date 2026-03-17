@@ -1,12 +1,13 @@
 import Phaser from 'phaser'
 import GameScene from './scenes/GameScene'
 import type { GameState } from '../types'
-import type { GameStartPayload, PlayerInputPayload } from '../hooks/useGameSocket'
+import type { GameStartPayload, PlayerInputPayload, LaunchBeyPayload } from '../hooks/useGameSocket'
 
 export interface PhaserGameHandle {
   game: Phaser.Game
   startGame: (payload: GameStartPayload) => void
   applyPlayerInput: (payload: PlayerInputPayload) => void
+  applyLaunch: (payload: LaunchBeyPayload) => void
 }
 
 export const createPhaserGame = (
@@ -44,6 +45,9 @@ export const createPhaserGame = (
     },
     applyPlayerInput: (payload) => {
       scene.applyPlayerInput(payload)
+    },
+    applyLaunch: (payload) => {
+      scene.applyLaunch(payload)
     },
   }
 }

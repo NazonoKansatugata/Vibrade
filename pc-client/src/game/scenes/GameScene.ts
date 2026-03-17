@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import BeySprite from '../sprites/Bey'
 import type { GameState } from '../../types'
-import type { GameStartPayload, PlayerInputPayload } from '../../hooks/useGameSocket'
+import type { GameStartPayload, PlayerInputPayload, LaunchBeyPayload } from '../../hooks/useGameSocket'
 
 const SERVER_ARENA_RADIUS = 500
 const TICK_MS = 33
@@ -9,6 +9,7 @@ const FRICTION = 0.98
 const ENERGY_DECAY = 0.05
 const BASE_ACCEL = 1.5
 const MAX_SPEED = 20
+const BOOST_FORCE = 8.0
 const COLLISION_RESTITUTION = 0.82
 const COLLISION_KNOCKBACK_BOOST = 1.35
 const MIN_COLLISION_KNOCKBACK = 1.8
@@ -154,6 +155,48 @@ class GameScene extends Phaser.Scene {
     }
 
     this.latestInputs.set(payload.playerId, payload)
+  }
+
+  applyLaunch(payload: LaunchBeyPayload) {
+    if (!this.isGameActive) {
+      return
+    }
+
+    const playerId = payload.playerSocketId
+    const bey = this.runtimeBeys.get(playerId)
+    if (!bey || !bey.isActive) {
+      return
+    }
+
+    const input = this.latestInputs.get(playerId)
+    let dx = input?.tiltX ?? 0
+    let dy = input?.tiltY ?? 0
+
+    // 入力がない場合は現在の速度方向へブースト
+    if (dx === 0 && dy === 0) {
+      const speed = Math.sqrt(bey.vx * bey.vx + bey.vy * bey.vy)
+      if (speed > 0) {
+        dx = bey.vx / speed
+        dy = bey.vy / speed
+      } else {
+        // 停止していて入力もない場合はランダム方向へ
+        const angle = Math.random() * Math.PI * 2
+        dx = Math.cos(angle)
+        dy = Math.sin(angle)
+      }
+    } else {
+      // 入力のベクトルを正規化
+      const len = Math.sqrt(dx * dx + dy * dy)
+      dx /= len
+      dy /= len
+    }
+
+    // パワーに応じたブースト（最大 BOOST_FORCE）
+    const force = BOOST_FORCE * Math.max(0.2, payload.power)
+    bey.vx += dx * force
+    bey.vy += dy * force
+
+    // 最大速度制限は simulateTick で行われるが、瞬間的に超えるのは許容（あるいはここで軽くキャップ）
   }
 
   private buildScene(width: number, height: number) {
