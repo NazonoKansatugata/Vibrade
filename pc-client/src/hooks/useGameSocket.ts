@@ -180,6 +180,18 @@ export const useGameSocket = (roomIdHint?: string, options?: GameSocketOptions) 
     }
   };
 
+  const triggerVibrateTargets = (targetSocketIds: string[], pattern: number[] = [120, 60, 120]) => {
+    if (!roomId || targetSocketIds.length === 0) {
+      return;
+    }
+
+    appendDebugEvent(
+      'emit:triggerVibrateTargets',
+      `roomId=${roomId} targets=${targetSocketIds.length}`,
+    );
+    gameSocket.triggerVibrate(roomId, targetSocketIds, pattern);
+  };
+
   return {
     isConnected,
     roomId,
@@ -192,6 +204,7 @@ export const useGameSocket = (roomIdHint?: string, options?: GameSocketOptions) 
     debugEvents: ENABLE_SOCKET_TIMELINE ? debugEvents : [],
     createRoom,
     startGame,
-    triggerVibrate
+    triggerVibrate,
+    triggerVibrateTargets,
   };
 };

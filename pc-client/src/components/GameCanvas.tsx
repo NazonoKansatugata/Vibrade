@@ -6,6 +6,7 @@ import {
 } from '../game/PhaserGame'
 import type { GameState } from '../types'
 import type { GameStartPayload, PlayerInputPayload, LaunchBeyPayload } from '../hooks/useGameSocket'
+import type { CollisionEventPayload } from '../game/scenes/GameScene'
 
 interface GameCanvasProps {
   roomId: string
@@ -13,10 +14,11 @@ interface GameCanvasProps {
   inputPayload?: PlayerInputPayload | null
   launchPayload?: LaunchBeyPayload | null
   onGameStateChange?: (gameState: GameState) => void
+  onCollision?: (payload: CollisionEventPayload) => void
   retrySeed?: number
 }
 
-const GameCanvas = ({ roomId, startPayload, inputPayload, launchPayload, onGameStateChange, retrySeed = 0 }: GameCanvasProps) => {
+const GameCanvas = ({ roomId, startPayload, inputPayload, launchPayload, onGameStateChange, onCollision, retrySeed = 0 }: GameCanvasProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const gameRef = useRef<PhaserGameHandle>(null)
 
@@ -26,7 +28,7 @@ const GameCanvas = ({ roomId, startPayload, inputPayload, launchPayload, onGameS
       return
     }
 
-    gameRef.current = createPhaserGame(container, roomId, onGameStateChange)
+    gameRef.current = createPhaserGame(container, roomId, onGameStateChange, onCollision)
 
     return () => {
       if (gameRef.current) {
@@ -34,7 +36,7 @@ const GameCanvas = ({ roomId, startPayload, inputPayload, launchPayload, onGameS
       }
       gameRef.current = null
     }
-  }, [roomId, onGameStateChange])
+  }, [roomId, onGameStateChange, onCollision])
 
   useEffect(() => {
     if (!startPayload) {
