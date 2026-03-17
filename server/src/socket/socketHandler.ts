@@ -78,7 +78,8 @@ export function registerSocketHandlers(io: Server) {
 
     socket.on(ClientEvents.LAUNCH_BEY, (data: { roomId: string, power: number, timestamp: number }) => {
       // Launch is handled in PC physics for now. Keep relay for future use/debug visibility.
-      io.to(data.roomId).emit(ClientEvents.LAUNCH_BEY, {
+      console.log(`[Launch Bey] Player: ${socket.id} Power: ${data.power} Room: ${data.roomId}`);
+      io.to(data.roomId).emit(ServerEvents.LAUNCH_BEY, {
         playerSocketId: socket.id,
         power: data.power,
         timestamp: data.timestamp || Date.now()

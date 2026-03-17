@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useGameSocket } from '../hooks/useGameSocket'
 import GameCanvas from '../components/GameCanvas'
@@ -14,7 +14,19 @@ const Game = () => {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
   const resolvedRoomId = roomId ?? ''
-  const { latestGameStart, latestPlayerInput, latestPlayerInputs, players } = useGameSocket(resolvedRoomId)
+
+  // LAUNCH_BEY 受信フラッシュ表示（2秒間表示）
+  const [actionFlash, setActionFlash] = useState<{ playerSocketId: string; power: number } | null>(null)
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const { latestGameStart, latestPlayerInput, latestPlayerInputs, players } = useGameSocket(resolvedRoomId, {
+    onLaunch: (payload) => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+      setActionFlash({ playerSocketId: payload.playerSocketId, power: payload.power })
+      flashTimerRef.current = setTimeout(() => setActionFlash(null), 2000)
+    }
+  })
+
   const [sceneGameState, setSceneGameState] = useState<GameState | undefined>(undefined)
   const [retrySeed, setRetrySeed] = useState(0)
   const demoGameState = useDemoGameState(resolvedRoomId, ENABLE_DEMO_FALLBACK)
@@ -57,6 +69,23 @@ const Game = () => {
                 )
               })}
             </ul>
+          </div>
+        )}
+
+        {/* LAUNCH_BEY 受信デバッグバナー */}
+        {actionFlash && (
+          <div style={{
+            marginTop: '8px',
+            padding: '8px 12px',
+            background: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
+            borderRadius: '8px',
+            color: '#f87171',
+            fontWeight: 'bold',
+            fontSize: '12px',
+            letterSpacing: '0.1em',
+          }}>
+            ⚡ Action — {players.find(p => p.id === actionFlash.playerSocketId)?.name ?? actionFlash.playerSocketId.slice(0, 6)} (power: {actionFlash.power.toFixed(2)})
           </div>
         )}
 
