@@ -45,6 +45,7 @@ class GameScene extends Phaser.Scene {
   private readonly roomId: string
   private readonly onStateChange?: (gameState: GameState) => void
   private arenaRadius: number = 500
+  private unitToPixel: number = 1
   private arena?: Phaser.GameObjects.Arc
   private arenaRing?: Phaser.GameObjects.Arc
   private roomLabel?: Phaser.GameObjects.Text
@@ -213,14 +214,20 @@ class GameScene extends Phaser.Scene {
 
     const centerX = width / 2
     const centerY = height / 2
-    const radius = Math.min(width, height) * ARENA_RENDER_RADIUS_SCALE
+    
+    // 基準となる4人時(半径500)のピクセル半径を計算
+    const baseArenaPixelRadius = Math.min(width, height) * ARENA_RENDER_RADIUS_SCALE
+    this.unitToPixel = baseArenaPixelRadius / 500
+    
+    // 現在の人数に応じた描画半径
+    const currentArenaPixelRadius = this.arenaRadius * this.unitToPixel
 
     this.add.rectangle(centerX, centerY, width, height, 0x0b1120, 1)
 
-    this.arena = this.add.circle(centerX, centerY, radius, 0x132238, 0.95)
+    this.arena = this.add.circle(centerX, centerY, currentArenaPixelRadius, 0x132238, 0.95)
     this.arena.setStrokeStyle(8, 0x38bdf8, 0.35)
 
-    this.arenaRing = this.add.circle(centerX, centerY, radius * 0.72, 0x0f172a, 0)
+    this.arenaRing = this.add.circle(centerX, centerY, currentArenaPixelRadius * 0.72, 0x0f172a, 0)
     this.arenaRing.setStrokeStyle(3, 0xe2e8f0, 0.25)
 
     this.roomLabel = this.add.text(centerX, 36, `ROOM ${this.roomId}`, {
@@ -262,13 +269,13 @@ class GameScene extends Phaser.Scene {
 
       if (!sprite) {
         const playerName = gameState.players.find(
-          (player) => player.id === beyState.playerId,
+            (player) => player.id === beyState.playerId,
         )?.name
-        sprite = new BeySprite(this, beyState.id, playerName ?? `P${index + 1}`)
+        sprite = new BeySprite(this, beyState.id, playerName ?? `P${index + 1}`, this.unitToPixel)
         this.beySprites.set(beyState.id, sprite)
       }
 
-      sprite.applyState(this.projectX(beyState.x), this.projectY(beyState.y), beyState)
+      sprite.applyState(this.projectX(beyState.x), this.projectY(beyState.y), beyState, this.unitToPixel)
     })
   }
 
@@ -540,14 +547,12 @@ class GameScene extends Phaser.Scene {
 
   private projectX(x: number) {
     const centerX = this.scale.width / 2
-    const arenaPixelRadius = Math.min(this.scale.width, this.scale.height) * ARENA_RENDER_RADIUS_SCALE
-    return centerX + (x / this.arenaRadius) * arenaPixelRadius
+    return centerX + x * this.unitToPixel
   }
 
   private projectY(y: number) {
     const centerY = this.scale.height / 2
-    const arenaPixelRadius = Math.min(this.scale.width, this.scale.height) * ARENA_RENDER_RADIUS_SCALE
-    return centerY + (y / this.arenaRadius) * arenaPixelRadius
+    return centerY + y * this.unitToPixel
   }
 }
 
