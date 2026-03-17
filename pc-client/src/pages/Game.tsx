@@ -34,6 +34,7 @@ const Game = () => {
   const [sceneGameState, setSceneGameState] = useState<GameState | undefined>(undefined)
   const [retrySeed, setRetrySeed] = useState(0)
   const playersRef = useRef(players)
+  const effectivePlayersRef = useRef(players)
   const triggerVibrateTargetsRef = useRef(triggerVibrateTargets)
   const demoGameState = useDemoGameState(resolvedRoomId, ENABLE_DEMO_FALLBACK)
   const gameState = sceneGameState ?? (ENABLE_DEMO_FALLBACK ? demoGameState : undefined)
@@ -43,6 +44,11 @@ const Game = () => {
   useEffect(() => {
     playersRef.current = players
   }, [players])
+
+  useEffect(() => {
+    const fallbackPlayers = effectiveGameStart?.players ?? []
+    effectivePlayersRef.current = players.length > 0 ? players : fallbackPlayers
+  }, [players, effectiveGameStart])
 
   useEffect(() => {
     triggerVibrateTargetsRef.current = triggerVibrateTargets
@@ -59,7 +65,7 @@ const Game = () => {
   }, [effectiveGameStart])
 
   const handleCollision = useCallback((payload: CollisionEventPayload) => {
-    const targetSocketIds = playersRef.current
+    const targetSocketIds = effectivePlayersRef.current
       .filter((player) => payload.playerIds.includes(player.id))
       .map((player) => player.socketId)
 
