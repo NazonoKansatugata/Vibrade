@@ -74,9 +74,13 @@ export const useSensor = (): SensorData => {
       // ジェスチャー判定
       const gesture = detector.current.detect(filteredMag, accZ);
 
-      // 状態が変わったか、LAUNCHが発生したときのみ更新
+      // gesture.state / shakePower が古いまま残ると送信条件とUI表示がズレるため、差分がある時は同期する
       setData((prev) => {
-        if (prev.gestureState !== gesture.state || gesture.isLaunching) {
+        if (
+          prev.gestureState !== gesture.state
+          || prev.shakePower !== gesture.shakePower
+          || gesture.isLaunching
+        ) {
           return {
             ...prev,
             gestureState: gesture.state,

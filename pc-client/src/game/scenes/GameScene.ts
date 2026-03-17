@@ -165,7 +165,11 @@ class GameScene extends Phaser.Scene {
       return
     }
 
-    const playerId = payload.playerSocketId
+    const playerId = this.players.find((player) => player.socketId === payload.playerSocketId)?.id
+    if (!playerId) {
+      return
+    }
+
     const bey = this.runtimeBeys.get(playerId)
     if (!bey || !bey.isActive) {
       return

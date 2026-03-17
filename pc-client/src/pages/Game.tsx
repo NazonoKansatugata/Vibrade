@@ -86,7 +86,7 @@ const Game = () => {
             fontSize: '12px',
             letterSpacing: '0.1em',
           }}>
-            ⚡ Action — {players.find(p => p.id === actionFlash.playerSocketId)?.name ?? actionFlash.playerSocketId.slice(0, 6)} (power: {actionFlash.power.toFixed(2)})
+            ⚡ Action — {players.find(p => p.socketId === actionFlash.playerSocketId)?.name ?? actionFlash.playerSocketId.slice(0, 6)} (power: {actionFlash.power.toFixed(2)})
           </div>
         )}
 

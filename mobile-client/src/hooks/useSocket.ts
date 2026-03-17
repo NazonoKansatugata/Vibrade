@@ -34,6 +34,7 @@ export const useSocket = (roomId: string, playerName: string) => {
   const [debugEvents, setDebugEvents] = useState<SocketDebugEvent[]>([]);
   const lastInputLogAt = useRef(0);
   const lastLaunchLogAt = useRef(0);
+  const wasLaunchActiveRef = useRef(false);
   const { triggerFeedback } = useHapticFeedback();
 
   const appendDebugEvent = (event: string, detail?: string) => {
@@ -130,17 +131,22 @@ export const useSocket = (roomId: string, playerName: string) => {
   // Socket経由で入力を送信する関数
   const sendInput = (tiltX: number, tiltY: number, shakePower: number) => {
     const now = Date.now();
+    const isLaunchActive = shakePower > 0;
+    const launchPower = isLaunchActive && !wasLaunchActiveRef.current ? shakePower : 0;
+
+    wasLaunchActiveRef.current = isLaunchActive;
+
     if (now - lastInputLogAt.current >= 500) {
       appendDebugEvent('emit:controlInput', `tilt=(${tiltX.toFixed(2)}, ${tiltY.toFixed(2)})`);
       lastInputLogAt.current = now;
     }
 
-    if (shakePower > 0 && now - lastLaunchLogAt.current >= 250) {
-      appendDebugEvent('emit:launchBey', `power=${shakePower.toFixed(2)}`);
+    if (launchPower > 0 && now - lastLaunchLogAt.current >= 250) {
+      appendDebugEvent('emit:launchBey', `power=${launchPower.toFixed(2)}`);
       lastLaunchLogAt.current = now;
     }
 
-    controlSocket.sendInput(tiltX, tiltY, shakePower);
+    controlSocket.sendInput(tiltX, tiltY, launchPower);
   };
 
   return {
