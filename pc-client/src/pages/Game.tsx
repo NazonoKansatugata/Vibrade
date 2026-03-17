@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useGameSocket } from '../hooks/useGameSocket'
 import GameCanvas from '../components/GameCanvas'
@@ -14,22 +14,23 @@ const Game = () => {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
   const resolvedRoomId = roomId ?? ''
-  const { latestGameStart, latestPlayerInput, latestPlayerInputs, latestLaunchBey, players } = useGameSocket(resolvedRoomId)
-  const [sceneGameState, setSceneGameState] = useState<GameState | undefined>(undefined)
-  const demoGameState = useDemoGameState(resolvedRoomId, ENABLE_DEMO_FALLBACK)
-  const gameState = sceneGameState ?? (ENABLE_DEMO_FALLBACK ? demoGameState : undefined)
-  const tiltRows = Object.values(latestPlayerInputs)
 
   // LAUNCH_BEY 受信フラッシュ表示（2秒間表示）
   const [actionFlash, setActionFlash] = useState<{ playerSocketId: string; power: number } | null>(null)
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => {
-    if (!latestLaunchBey) return
-    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
-    setActionFlash({ playerSocketId: latestLaunchBey.playerSocketId, power: latestLaunchBey.power })
-    flashTimerRef.current = setTimeout(() => setActionFlash(null), 2000)
-  }, [latestLaunchBey])
+  const { latestGameStart, latestPlayerInput, latestPlayerInputs, players } = useGameSocket(resolvedRoomId, {
+    onLaunch: (payload) => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+      setActionFlash({ playerSocketId: payload.playerSocketId, power: payload.power })
+      flashTimerRef.current = setTimeout(() => setActionFlash(null), 2000)
+    }
+  })
+
+  const [sceneGameState, setSceneGameState] = useState<GameState | undefined>(undefined)
+  const demoGameState = useDemoGameState(resolvedRoomId, ENABLE_DEMO_FALLBACK)
+  const gameState = sceneGameState ?? (ENABLE_DEMO_FALLBACK ? demoGameState : undefined)
+  const tiltRows = Object.values(latestPlayerInputs)
 
   const handleStateChange = useCallback((next: GameState) => {
     setSceneGameState(next)

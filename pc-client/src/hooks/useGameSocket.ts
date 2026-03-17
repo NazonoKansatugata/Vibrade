@@ -40,7 +40,11 @@ interface SocketErrorPayload {
   message: string;
 }
 
-export const useGameSocket = (roomIdHint?: string) => {
+export interface GameSocketOptions {
+  onLaunch?: (payload: LaunchBeyPayload) => void;
+}
+
+export const useGameSocket = (roomIdHint?: string, options?: GameSocketOptions) => {
   const [isConnected, setIsConnected] = useState(false);
   const [roomId, setRoomId] = useState<string | null>(roomIdHint ?? null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -51,6 +55,12 @@ export const useGameSocket = (roomIdHint?: string) => {
   const [latestLaunchBey, setLatestLaunchBey] = useState<LaunchBeyPayload | null>(null);
   const [debugEvents, setDebugEvents] = useState<SocketDebugEvent[]>([]);
   const lastInputLogAt = useRef(0);
+  const optionsRef = useRef(options);
+
+  // Update options ref so effect can access current callbacks without re-subscribing to socket
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
 
   const appendDebugEvent = (event: string, detail?: string) => {
     if (!ENABLE_SOCKET_TIMELINE) {
@@ -116,6 +126,11 @@ export const useGameSocket = (roomIdHint?: string) => {
     const onLaunchBey = (payload: LaunchBeyPayload) => {
       setLatestLaunchBey(payload);
       appendDebugEvent(ServerEvents.LAUNCH_BEY, `player=${payload.playerSocketId.slice(0, 6)} power=${payload.power.toFixed(2)}`);
+      
+      // Execute callback if provided
+      if (optionsRef.current?.onLaunch) {
+        optionsRef.current.onLaunch(payload);
+      }
     };
 
     const onError = (err: SocketErrorPayload) => {
