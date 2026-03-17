@@ -16,6 +16,7 @@ const Game = () => {
   const resolvedRoomId = roomId ?? ''
   const { latestGameStart, latestPlayerInput, latestPlayerInputs, players } = useGameSocket(resolvedRoomId)
   const [sceneGameState, setSceneGameState] = useState<GameState | undefined>(undefined)
+  const [retrySeed, setRetrySeed] = useState(0)
   const demoGameState = useDemoGameState(resolvedRoomId, ENABLE_DEMO_FALLBACK)
   const gameState = sceneGameState ?? (ENABLE_DEMO_FALLBACK ? demoGameState : undefined)
   const tiltRows = Object.values(latestPlayerInputs)
@@ -24,10 +25,20 @@ const Game = () => {
     setSceneGameState(next)
   }, [])
 
+  const handleRetry = useCallback(() => {
+    if (!latestGameStart) return
+    setRetrySeed((prev) => prev + 1)
+  }, [latestGameStart])
+
   return (
     <div className="game-page">
       <aside className="game-page__sidebar">
-        <GameStatus roomId={resolvedRoomId} gameState={gameState} />
+        <GameStatus
+          roomId={resolvedRoomId}
+          gameState={gameState}
+          canRetry={Boolean(latestGameStart)}
+          onRetry={handleRetry}
+        />
 
         {ENABLE_TILT_PANEL && (
           <div className="socket-debug-panel">
@@ -63,6 +74,7 @@ const Game = () => {
           startPayload={latestGameStart}
           inputPayload={latestPlayerInput}
           onGameStateChange={handleStateChange}
+          retrySeed={retrySeed}
         />
       </main>
     </div>

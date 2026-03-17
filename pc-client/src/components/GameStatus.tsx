@@ -3,9 +3,11 @@ import type { GameState } from '../types'
 interface GameStatusProps {
   roomId: string
   gameState?: GameState
+  canRetry?: boolean
+  onRetry?: () => void
 }
 
-const GameStatus = ({ roomId, gameState }: GameStatusProps) => {
+const GameStatus = ({ roomId, gameState, canRetry = false, onRetry }: GameStatusProps) => {
   const playerCount = gameState?.players.length ?? 0
   const activeBeys = gameState?.beys.filter((b) => b.energy > 0).length ?? 0
   const isLaunchReady = gameState?.status === 'armed'
@@ -64,6 +66,19 @@ const GameStatus = ({ roomId, gameState }: GameStatusProps) => {
         <p className="game-status__winner">
           🏆 {gameState.players.find((p) => p.id === gameState.winnerId)?.name ?? gameState.winnerId} の勝利！
         </p>
+      )}
+
+      {gameState?.status === 'ended' && (
+        <div className="game-status__result-actions">
+          <p className="game-status__result-label">リザルト: {gameState.winnerId ? '勝者あり' : '引き分け'}</p>
+          <button
+            className="game-status__retry-btn"
+            onClick={onRetry}
+            disabled={!canRetry || !onRetry}
+          >
+            もう一度バトル
+          </button>
+        </div>
       )}
     </div>
   )
