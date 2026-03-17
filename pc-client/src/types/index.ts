@@ -16,7 +16,6 @@ export interface Bey {
   vx: number
   vy: number
   energy: number
-  rotation?: number
 }
 
 export interface GameState {

@@ -44,7 +44,6 @@ class BeySprite {
 
   applyState(x: number, y: number, state: BeyState) {
     this.root.setPosition(x, y)
-    this.root.setRotation(Phaser.Math.DegToRad(state.rotation ?? 0))
 
     const speed = Math.sqrt(state.vx * state.vx + state.vy * state.vy)
     this.spinVelocity = Math.max(1.5, speed * 0.9)

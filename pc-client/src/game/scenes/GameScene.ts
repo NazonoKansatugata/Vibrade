@@ -17,7 +17,7 @@ const COLLISION_RINGOUT_MIN_TICKS = 6
 const COLLISION_RINGOUT_MAX_TICKS = 14
 const BASE_DAMAGE = 7
 const IMPACT_MULTIPLIER = 0.45
-const BEY_RADIUS = 20
+const BEY_RADIUS = 30
 
 interface RuntimeBey {
   id: string
@@ -394,7 +394,6 @@ class GameScene extends Phaser.Scene {
       vx: bey.vx,
       vy: bey.vy,
       energy: bey.energy,
-      rotation: this.calculateRotation(bey.vx, bey.vy),
     }))
 
     return {
@@ -443,13 +442,6 @@ class GameScene extends Phaser.Scene {
     }
 
     return false
-  }
-
-  private calculateRotation(vx: number, vy: number) {
-    if (vx === 0 && vy === 0) {
-      return 0
-    }
-    return (Math.atan2(vy, vx) * 180) / Math.PI
   }
 
   private projectX(x: number) {
