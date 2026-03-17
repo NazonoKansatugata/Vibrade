@@ -26,16 +26,16 @@ export const useHapticFeedback = () => {
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
 
-      oscillator.type = 'sine';
-      oscillator.frequency.value = 60; // 低周波数で「ポツッ」という感触を出す
+      oscillator.type = 'triangle'; // サイン波より聞こえやすい
+      oscillator.frequency.value = 880; // 高めの音 (A5) にしてはっきり聞かせる
 
-      // 音量の減衰（エンベロープ）を作ってクリック感を出す
+      // 音量の減衰（エンベロープ）を作って長めの音にする
       const now = audioContext.currentTime;
       const duration = (pattern[0] || 200) / 1000;
 
       gainNode.gain.setValueAtTime(0, now);
-      gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, now + duration);
+      gainNode.gain.linearRampToValueAtTime(1.0, now + 0.01); // 最大音量
+      gainNode.gain.linearRampToValueAtTime(0.5, now + duration); // 急激に消さず、少し残す
 
       oscillator.start(now);
       oscillator.stop(now + duration);
