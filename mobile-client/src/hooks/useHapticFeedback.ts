@@ -7,22 +7,41 @@ export type HapticMode = 'vibration-api' | 'ios-checkbox' | 'none';
 // iOS 18 でトグルスイッチの触覚フィードバックが追加され、
 // .click() をスクリプトから呼ぶだけで実振動を発動できる。
 let hapticCheckbox: HTMLInputElement | null = null;
+let hapticSwitchLabel: HTMLLabelElement | null = null;
 
 const getHapticCheckbox = (): HTMLInputElement | null => {
   if (typeof document === 'undefined') return null;
   if (hapticCheckbox) return hapticCheckbox;
+
+  const label = document.createElement('label');
+  label.id = 'switch';
+
   const el = document.createElement('input');
   el.type = 'checkbox';
   el.setAttribute('switch', '');
+  el.defaultChecked = true;
+
+  label.appendChild(el);
+
   const debugVisible = isIOSCheckboxHapticAvailable();
+  label.style.cssText = debugVisible
+    ? 'position:fixed;right:14px;bottom:14px;z-index:9999;opacity:0.95;color:#cbd5e1;font-size:11px;display:flex;align-items:center;gap:8px;'
+    : 'position:fixed;opacity:0;pointer-events:none;width:0;height:0;overflow:hidden;';
+
   el.style.cssText = debugVisible
-    ? 'position:fixed;right:14px;bottom:14px;width:52px;height:32px;opacity:0.95;z-index:9999;'
-    : 'position:fixed;opacity:0;pointer-events:none;width:0;height:0;';
+    ? 'width:52px;height:32px;'
+    : 'width:0;height:0;';
+
   if (debugVisible) {
     el.title = 'iOS Haptic Switch (debug)';
     el.setAttribute('aria-label', 'iOS Haptic Switch (debug)');
+    const text = document.createElement('span');
+    text.textContent = 'SwitchButton';
+    label.appendChild(text);
   }
-  document.body.appendChild(el);
+
+  document.body.appendChild(label);
+  hapticSwitchLabel = label;
   hapticCheckbox = el;
   return el;
 };
@@ -40,6 +59,7 @@ const isIOSCheckboxHapticAvailable = (): boolean => {
 const playCheckboxPattern = (pattern: number[]) => {
   const el = getHapticCheckbox();
   if (!el) return;
+  const target = hapticSwitchLabel ?? el;
   // 偶数indexが振動区間。50ms ≒ 1パルスとして分割して連打する
   let cursorMs = 0;
   for (let i = 0; i < pattern.length; i += 1) {
@@ -47,7 +67,7 @@ const playCheckboxPattern = (pattern: number[]) => {
     if (i % 2 === 0 && segMs > 0) {
       const pulseCount = Math.max(1, Math.round(segMs / 50));
       for (let p = 0; p < pulseCount; p += 1) {
-        setTimeout(() => el.click(), cursorMs + p * 50);
+        setTimeout(() => target.click(), cursorMs + p * 50);
       }
     }
     cursorMs += segMs;
