@@ -10,6 +10,8 @@ const ENERGY_DECAY = 0.05
 const BASE_ACCEL = 1.5
 const MAX_SPEED = 20
 const COLLISION_RESTITUTION = 0.82
+const COLLISION_KNOCKBACK_BOOST = 1.35
+const MIN_COLLISION_KNOCKBACK = 1.8
 const BASE_DAMAGE = 7
 const IMPACT_MULTIPLIER = 0.45
 const BEY_RADIUS = 20
@@ -267,15 +269,32 @@ class GameScene extends Phaser.Scene {
         const rvx = b.vx - a.vx
         const rvy = b.vy - a.vy
         const velAlongNormal = rvx * nx + rvy * ny
-        if (velAlongNormal > 0) {
-          continue
+
+        // 互いに離れる向きでも重なっている場合は最小ノックバックで押し返す
+        const closingSpeed = Math.max(0, -velAlongNormal)
+        const knockbackStrength = Math.max(
+          MIN_COLLISION_KNOCKBACK,
+          ((1 + COLLISION_RESTITUTION) * closingSpeed) / 2 * COLLISION_KNOCKBACK_BOOST,
+        )
+
+        a.vx -= knockbackStrength * nx
+        a.vy -= knockbackStrength * ny
+        b.vx += knockbackStrength * nx
+        b.vy += knockbackStrength * ny
+
+        const aSpeedSq = a.vx * a.vx + a.vy * a.vy
+        if (aSpeedSq > MAX_SPEED * MAX_SPEED) {
+          const aSpeed = Math.sqrt(aSpeedSq)
+          a.vx = (a.vx / aSpeed) * MAX_SPEED
+          a.vy = (a.vy / aSpeed) * MAX_SPEED
         }
 
-        const impulse = (-(1 + COLLISION_RESTITUTION) * velAlongNormal) / 2
-        a.vx -= impulse * nx
-        a.vy -= impulse * ny
-        b.vx += impulse * nx
-        b.vy += impulse * ny
+        const bSpeedSq = b.vx * b.vx + b.vy * b.vy
+        if (bSpeedSq > MAX_SPEED * MAX_SPEED) {
+          const bSpeed = Math.sqrt(bSpeedSq)
+          b.vx = (b.vx / bSpeed) * MAX_SPEED
+          b.vy = (b.vy / bSpeed) * MAX_SPEED
+        }
 
         const penetration = minDist - dist
         const correction = (Math.max(penetration - 0.1, 0) / 2) * 0.35
@@ -284,7 +303,7 @@ class GameScene extends Phaser.Scene {
         b.x += nx * correction
         b.y += ny * correction
 
-        const impact = Math.abs(impulse)
+        const impact = knockbackStrength
         const aAdv = a.energy / Math.max(1, b.energy)
         const damageToA = BASE_DAMAGE + (impact * IMPACT_MULTIPLIER) / Math.max(0.2, aAdv)
         const damageToB = BASE_DAMAGE + impact * IMPACT_MULTIPLIER * Math.max(0.2, aAdv)

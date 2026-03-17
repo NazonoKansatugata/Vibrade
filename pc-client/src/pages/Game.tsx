@@ -100,6 +100,7 @@ const Game = () => {
 
       <main className="game-page__canvas">
         <GameCanvas
+          key={`${resolvedRoomId}-${retrySeed}`}
           roomId={resolvedRoomId}
           startPayload={latestGameStart}
           inputPayload={latestPlayerInput}
