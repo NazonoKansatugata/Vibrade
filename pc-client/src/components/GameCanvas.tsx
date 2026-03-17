@@ -12,9 +12,10 @@ interface GameCanvasProps {
   startPayload?: GameStartPayload | null
   inputPayload?: PlayerInputPayload | null
   onGameStateChange?: (gameState: GameState) => void
+  retrySeed?: number
 }
 
-const GameCanvas = ({ roomId, startPayload, inputPayload, onGameStateChange }: GameCanvasProps) => {
+const GameCanvas = ({ roomId, startPayload, inputPayload, onGameStateChange, retrySeed = 0 }: GameCanvasProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const gameRef = useRef<PhaserGameHandle>(null)
 
@@ -40,7 +41,7 @@ const GameCanvas = ({ roomId, startPayload, inputPayload, onGameStateChange }: G
     }
 
     gameRef.current?.startGame(startPayload)
-  }, [startPayload])
+  }, [startPayload, retrySeed])
 
   useEffect(() => {
     if (!inputPayload) {

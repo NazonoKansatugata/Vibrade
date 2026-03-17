@@ -6,7 +6,7 @@ import type { GameStartPayload, PlayerInputPayload } from '../../hooks/useGameSo
 const SERVER_ARENA_RADIUS = 500
 const TICK_MS = 33
 const FRICTION = 0.98
-const SPIN_DECAY = 0.05
+const ENERGY_DECAY = 0.05
 const BASE_ACCEL = 1.5
 const MAX_SPEED = 20
 const COLLISION_RESTITUTION = 0.82
@@ -21,7 +21,6 @@ interface RuntimeBey {
   y: number
   vx: number
   vy: number
-  spinPower: number
   energy: number
   isActive: boolean
   radius: number
@@ -109,7 +108,6 @@ class GameScene extends Phaser.Scene {
         y: Math.sin(angle) * spawnRadius,
         vx: 0,
         vy: 0,
-        spinPower: 100,
         energy: 100,
         isActive: true,
         radius: BEY_RADIUS,
@@ -211,7 +209,7 @@ class GameScene extends Phaser.Scene {
       const tiltX = input?.tiltX ?? 0
       const tiltY = input?.tiltY ?? 0
 
-      const controlFactor = Math.max(0.3, 1 - bey.spinPower / 200)
+      const controlFactor = Math.max(0.3, 1 - bey.energy / 200)
       bey.vx += tiltX * BASE_ACCEL * controlFactor
       bey.vy += tiltY * BASE_ACCEL * controlFactor
 
@@ -227,11 +225,10 @@ class GameScene extends Phaser.Scene {
       bey.vx *= FRICTION
       bey.vy *= FRICTION
 
-      bey.spinPower = Math.max(0, bey.spinPower - SPIN_DECAY)
-      bey.energy = Math.max(0, bey.energy - 0.02)
+      bey.energy = Math.max(0, bey.energy - ENERGY_DECAY)
 
       const distSq = bey.x * bey.x + bey.y * bey.y
-      if (distSq > SERVER_ARENA_RADIUS * SERVER_ARENA_RADIUS || bey.spinPower <= 0 || bey.energy <= 0) {
+      if (distSq > SERVER_ARENA_RADIUS * SERVER_ARENA_RADIUS || bey.energy <= 0) {
         bey.isActive = false
         bey.energy = 0
         bey.vx = 0
@@ -288,7 +285,7 @@ class GameScene extends Phaser.Scene {
         b.y += ny * correction
 
         const impact = Math.abs(impulse)
-        const aAdv = a.spinPower / Math.max(1, b.spinPower)
+        const aAdv = a.energy / Math.max(1, b.energy)
         const damageToA = BASE_DAMAGE + (impact * IMPACT_MULTIPLIER) / Math.max(0.2, aAdv)
         const damageToB = BASE_DAMAGE + impact * IMPACT_MULTIPLIER * Math.max(0.2, aAdv)
 

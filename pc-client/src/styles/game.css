@@ -152,3 +152,32 @@
   color: #fbbf24;
   text-align: center;
 }
+
+.game-status__result-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.game-status__result-label {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #cbd5e1;
+}
+
+.game-status__retry-btn {
+  border: 1px solid #38bdf8;
+  background: #0ea5e9;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.game-status__retry-btn:disabled {
+  background: #334155;
+  border-color: #475569;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
