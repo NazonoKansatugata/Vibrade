@@ -17,5 +17,6 @@ export const ServerEvents = {
   GAME_STATE: 'gameState',
   COLLISION: 'collision',
   GAME_START: 'gameStart',
+  LAUNCH_BEY: 'launchBey',
   ERROR: 'error'
 } as const;
