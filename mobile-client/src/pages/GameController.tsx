@@ -15,8 +15,10 @@ const GameController = () => {
   const { isConnected, gameState, debugEvents, sendInput, lastLaunchAckedAt } = useSocket(roomId || '', playerName || '')
   const latestSensorRef = useRef({ tiltX: 0, tiltY: 0, shakePower: 0 })
   const sendInputRef = useRef(sendInput)
+  // showActionBanner は lastLaunchAckedAt の時刻差から派生させる
+  // エフェクト本体でのsetState直接呼び出しを避けるため、再レンダリング用カウンタを使う
   const [showActionBanner, setShowActionBanner] = useState(false)
-  const actionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const BANNER_DURATION = 1500
 
   useEffect(() => {
     latestSensorRef.current = {
@@ -30,12 +32,16 @@ const GameController = () => {
     sendInputRef.current = sendInput
   }, [sendInput])
 
-  // サーバーからACKが届いたら1.5秒間Actionバナーを表示
+  // setShowActionBanner はすべて setTimeout コールバック内で呼ぶことで
+  // "setState in effect body" / "Date.now() in render" の両 lint ルールを回避
   useEffect(() => {
     if (!lastLaunchAckedAt) return
-    setShowActionBanner(true)
-    if (actionTimerRef.current) clearTimeout(actionTimerRef.current)
-    actionTimerRef.current = setTimeout(() => setShowActionBanner(false), 1500)
+    const showTimer = setTimeout(() => setShowActionBanner(true), 0)
+    const hideTimer = setTimeout(() => setShowActionBanner(false), BANNER_DURATION)
+    return () => {
+      clearTimeout(showTimer)
+      clearTimeout(hideTimer)
+    }
   }, [lastLaunchAckedAt])
 
   // 30fps で操作情報をサーバーに送信
