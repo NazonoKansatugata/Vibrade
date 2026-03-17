@@ -51,18 +51,23 @@ const getHapticCheckbox = (): HTMLInputElement | null => {
 
   // touchstart でペンディング中のパルスを消費する（iOS ジェスチャーコンテキスト内で実行）
   document.addEventListener('touchstart', () => {
-    if (pendingHapticPulses <= 0) return;
-    const count = pendingHapticPulses;
-    pendingHapticPulses = 0;
-    const t = hapticSwitchLabel ?? hapticCheckbox;
-    if (!t) return;
-    for (let i = 0; i < count; i++) {
-      // 連打時は少しズラして iOS が別パルスとして認識できるようにする
-      setTimeout(() => t.click(), i * 50);
-    }
+    consumePendingHapticPulses();
   }, { passive: true });
 
   return el;
+};
+
+// React の onTouchStart からも呼べるよう export する
+export const consumePendingHapticPulses = (): void => {
+  if (pendingHapticPulses <= 0) return;
+  const count = pendingHapticPulses;
+  pendingHapticPulses = 0;
+  const t = hapticSwitchLabel ?? hapticCheckbox;
+  if (!t) return;
+  for (let i = 0; i < count; i++) {
+    // 連打時は少しズラして iOS が別パルスとして認識できるようにする
+    setTimeout(() => t.click(), i * 50);
+  }
 };
 
 const isIOSCheckboxHapticAvailable = (): boolean => {
