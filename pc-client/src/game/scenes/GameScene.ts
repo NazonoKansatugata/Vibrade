@@ -3,7 +3,6 @@ import BeySprite from '../sprites/Bey'
 import type { GameState } from '../../types'
 import type { GameStartPayload, PlayerInputPayload, LaunchBeyPayload } from '../../hooks/useGameSocket'
 
-const SERVER_ARENA_RADIUS = 500
 const TICK_MS = 33
 const FRICTION = 0.98
 const ENERGY_DECAY = 0.05
@@ -45,6 +44,7 @@ interface RuntimeBey {
 class GameScene extends Phaser.Scene {
   private readonly roomId: string
   private readonly onStateChange?: (gameState: GameState) => void
+  private arenaRadius: number = 500
   private arena?: Phaser.GameObjects.Arc
   private arenaRing?: Phaser.GameObjects.Arc
   private roomLabel?: Phaser.GameObjects.Text
@@ -129,10 +129,13 @@ class GameScene extends Phaser.Scene {
     this.isGameActive = true
     this.winnerId = undefined
 
-    const count = Math.max(1, payload.players.length)
+    const count = payload.players.length
+    this.arenaRadius = 300 + (Math.max(2, count) - 2) * 100
+    this.buildScene(this.scale.width, this.scale.height)
+
     payload.players.forEach((player, index) => {
-      const angle = (Math.PI * 2 * index) / count
-      const spawnRadius = 140
+      const angle = (Math.PI * 2 * index) / Math.max(1, count)
+      const spawnRadius = this.arenaRadius * 0.3
       this.runtimeBeys.set(player.id, {
         id: player.id,
         playerId: player.id,
@@ -506,7 +509,7 @@ class GameScene extends Phaser.Scene {
 
   private handleArenaBoundary(bey: RuntimeBey) {
     const distSq = bey.x * bey.x + bey.y * bey.y
-    const wallContactRadius = SERVER_ARENA_RADIUS - bey.radius
+    const wallContactRadius = this.arenaRadius - bey.radius
     const wallContactSq = wallContactRadius * wallContactRadius
 
     if (distSq <= wallContactSq) {
@@ -518,7 +521,7 @@ class GameScene extends Phaser.Scene {
     const ny = dist === 0 ? 0 : bey.y / dist
 
     // 衝突直後のみ、壁を越えて押し出されたら場外負け
-    if (bey.ringoutArmedTicks > 0 && dist > SERVER_ARENA_RADIUS) {
+    if (bey.ringoutArmedTicks > 0 && dist > this.arenaRadius) {
       return true
     }
 
@@ -538,13 +541,13 @@ class GameScene extends Phaser.Scene {
   private projectX(x: number) {
     const centerX = this.scale.width / 2
     const arenaPixelRadius = Math.min(this.scale.width, this.scale.height) * ARENA_RENDER_RADIUS_SCALE
-    return centerX + (x / SERVER_ARENA_RADIUS) * arenaPixelRadius
+    return centerX + (x / this.arenaRadius) * arenaPixelRadius
   }
 
   private projectY(y: number) {
     const centerY = this.scale.height / 2
     const arenaPixelRadius = Math.min(this.scale.width, this.scale.height) * ARENA_RENDER_RADIUS_SCALE
-    return centerY + (y / SERVER_ARENA_RADIUS) * arenaPixelRadius
+    return centerY + (y / this.arenaRadius) * arenaPixelRadius
   }
 }
 
