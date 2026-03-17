@@ -131,7 +131,7 @@ class GameScene extends Phaser.Scene {
     this.winnerId = undefined
 
     const count = payload.players.length
-    this.arenaRadius = 300 + (Math.max(2, count) - 2) * 100
+    this.arenaRadius = 400 + (Math.max(2, count) - 2) * 50
     this.buildScene(this.scale.width, this.scale.height)
 
     payload.players.forEach((player, index) => {
