@@ -1,7 +1,7 @@
 // ゲーム内で使う共通型
 // shared/types が整備されたらそちらに移行する
 
-export type BeyType = 'power' | 'defense' | 'weight'
+export type BeyType = 'balance' | 'power' | 'defense' | 'weight'
 
 export interface Player {
   id: string
