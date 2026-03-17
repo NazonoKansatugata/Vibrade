@@ -32,10 +32,10 @@ class ControlSocket {
     return this.socket;
   }
 
-  joinRoom(roomId: string, playerName: string) {
+  joinRoom(roomId: string, playerName: string, beyType: string) {
     if (!this.socket) this.connect();
     this.currentRoomId = roomId;
-    this.socket?.emit(ClientEvents.JOIN_ROOM, { roomId, playerName });
+    this.socket?.emit(ClientEvents.JOIN_ROOM, { roomId, playerName, beyType });
   }
 
   sendInput(tiltX: number, tiltY: number, shakePower: number) {

@@ -33,7 +33,7 @@ export function registerSocketHandlers(io: Server) {
     });
 
     // --- Mobile Client Events ---
-    socket.on(ClientEvents.JOIN_ROOM, ({ roomId, playerName }: { roomId: string, playerName: string }) => {
+    socket.on(ClientEvents.JOIN_ROOM, ({ roomId, playerName, beyType }: { roomId: string, playerName: string, beyType: string }) => {
       const room = roomManager.getRoom(roomId);
       if (!room) {
         socket.emit(ServerEvents.ERROR, { code: 'NOT_FOUND', message: 'Room not found' });
@@ -41,7 +41,7 @@ export function registerSocketHandlers(io: Server) {
       }
 
       // Add player to room state
-      const result = roomManager.addPlayer(roomId, socket.id, playerName);
+      const result = roomManager.addPlayer(roomId, socket.id, playerName, beyType);
       if (!result) {
         socket.emit(ServerEvents.ERROR, { code: 'FULL', message: 'Room is full or unavailable' });
         return;

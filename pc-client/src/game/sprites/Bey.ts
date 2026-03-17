@@ -10,8 +10,8 @@ class BeySprite {
   private readonly nameLabel: Phaser.GameObjects.Text
   private spinVelocity = 4
 
-  constructor(scene: Phaser.Scene, id: string, playerName: string, pixelScale: number) {
-    const palette = this.pickColor(id)
+  constructor(scene: Phaser.Scene, id: string, playerName: string, pixelScale: number, beyType: BeyState['beyType']) {
+    const palette = this.pickColor(id, beyType)
 
     // BEY_RADIUS = 72 に合わせる
     this.body = scene.add.circle(0, 0, 72 * pixelScale, palette.outer, 1)
@@ -66,16 +66,30 @@ class BeySprite {
     this.root.destroy(true)
   }
 
-  private pickColor(id: string) {
-    const palettes = [
-      { outer: 0x22d3ee, inner: 0x0f766e },
-      { outer: 0xf97316, inner: 0xc2410c },
-      { outer: 0xa3e635, inner: 0x4d7c0f },
-      { outer: 0xf43f5e, inner: 0x9f1239 },
+  private pickColor(id: string, beyType: BeyState['beyType']) {
+    const innerPalettes = [
+      0x0f766e, // teal
+      0xc2410c, // orange
+      0x4d7c0f, // lime
+      0x9f1239, // rose
+      0x4338ca, // indigo
+      0x7e22ce, // purple
     ]
 
+    const typeOuterPalettes: Record<string, number[]> = {
+      balance: [0x94a3b8, 0x64748b, 0x475569], // slate/gray
+      power: [0xf43f5e, 0xef4444, 0xf97316],   // rose/red/orange
+      defense: [0x0ea5e9, 0x0284c7, 0x2563eb], // sky/blue
+      weight: [0x10b981, 0x22c55e, 0x84cc16],  // emerald/green/lime
+    }
+
     const sum = Array.from(id).reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    return palettes[sum % palettes.length]
+    const inner = innerPalettes[sum % innerPalettes.length]
+    
+    const outerList = typeOuterPalettes[beyType || 'balance'] || typeOuterPalettes.balance
+    const outer = outerList[sum % outerList.length]
+
+    return { outer, inner }
   }
 }
 

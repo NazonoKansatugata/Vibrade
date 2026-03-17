@@ -8,10 +8,14 @@ import { Wifi, WifiOff } from 'lucide-react'
 
 const GameController = () => {
   const location = useLocation()
-  const { roomId, playerName } = location.state || {}
+  const { roomId, playerName, beyType } = location.state || {}
 
   const sensorData = useSensor()
-  const { isConnected, gameState, sendInput, isVibrationSupported } = useSocket(roomId || '', playerName || '')
+  const { isConnected, gameState, sendInput, isVibrationSupported } = useSocket(
+    roomId || '',
+    playerName || '',
+    beyType || 'balance'
+  )
   const { triggerFeedback, isSupported: isHapticOrSoundSupported } = useHapticFeedback()
   const hapticMode = getHapticMode()
   const latestSensorRef = useRef({ tiltX: 0, tiltY: 0, shakePower: 0 })
