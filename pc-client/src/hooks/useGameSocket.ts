@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { gameSocket } from '../socket/gameSocket';
 import { ServerEvents } from '../socket/events';
 import type { Player } from '../types';
@@ -161,26 +161,26 @@ export const useGameSocket = (roomIdHint?: string, options?: GameSocketOptions) 
     };
   }, [roomIdHint]);
 
-  const createRoom = () => {
+  const createRoom = useCallback(() => {
     appendDebugEvent('emit:createRoom');
     gameSocket.createRoom();
-  };
+  }, []);
 
-  const startGame = () => {
+  const startGame = useCallback(() => {
     if (roomId) {
       appendDebugEvent('emit:startGame', `roomId=${roomId}`);
       gameSocket.startGame(roomId);
     }
-  };
+  }, [roomId]);
 
-  const triggerVibrate = () => {
+  const triggerVibrate = useCallback(() => {
     if (roomId) {
       appendDebugEvent('emit:triggerVibrate', `roomId=${roomId}`);
       gameSocket.triggerVibrate(roomId);
     }
-  };
+  }, [roomId]);
 
-  const triggerVibrateTargets = (targetSocketIds: string[], pattern: number[] = [120, 60, 120]) => {
+  const triggerVibrateTargets = useCallback((targetSocketIds: string[], pattern: number[] = [120, 60, 120]) => {
     if (!roomId || targetSocketIds.length === 0) {
       return;
     }
@@ -190,7 +190,7 @@ export const useGameSocket = (roomIdHint?: string, options?: GameSocketOptions) 
       `roomId=${roomId} targets=${targetSocketIds.length}`,
     );
     gameSocket.triggerVibrate(roomId, targetSocketIds, pattern);
-  };
+  }, [roomId]);
 
   return {
     isConnected,
