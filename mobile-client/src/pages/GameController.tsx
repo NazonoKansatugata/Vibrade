@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useLocation, Navigate } from 'react-router-dom'
 import { useSensor } from '../hooks/useSensor'
 import { useSocket } from '../hooks/useSocket'
-import { useHapticFeedback, getHapticMode } from '../hooks/useHapticFeedback'
+import { useHapticFeedback, getHapticMode, consumePendingHapticPulses } from '../hooks/useHapticFeedback'
 import { GestureState } from '../sensors/gestureDetector'
 import { Wifi, WifiOff } from 'lucide-react'
 
@@ -11,7 +11,7 @@ const GameController = () => {
   const { roomId, playerName, beyType } = location.state || {}
 
   const sensorData = useSensor()
-  const { isConnected, gameState, sendInput, isVibrationSupported } = useSocket(
+  const { isConnected, gameState, sendInput, isVibrationSupported, vibrateCount } = useSocket(
     roomId || '',
     playerName || '',
     beyType || 'balance'
@@ -94,7 +94,10 @@ const GameController = () => {
   const isLaunchReady = gameState?.status === 'armed'
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#0a0a12] text-white select-none touch-none overflow-hidden">
+    <div
+      className="flex flex-col min-h-screen bg-[#0a0a12] text-white select-none touch-none overflow-hidden"
+      onTouchStart={() => consumePendingHapticPulses()}
+    >
       {/* Ambient background */}
       <div className="fixed inset-0 pointer-events-none">
         <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full blur-[120px] transition-all duration-500 ${
@@ -225,6 +228,13 @@ const GameController = () => {
               {hapticMode === 'vibration-api' && 'VIBRATE API'}
               {hapticMode === 'ios-checkbox' && '✦ iOS HAPTIC'}
               {hapticMode === 'none' && 'UNAVAILABLE'}
+            </span>
+          </div>
+          {/* VIBRATE 受信カウント（デバッグ用） */}
+          <div className="flex items-center justify-between mb-2 px-1">
+            <span className="text-[9px] text-slate-500 uppercase tracking-widest">Server VIBRATE received</span>
+            <span className={`text-[10px] font-mono font-bold ${vibrateCount > 0 ? 'text-yellow-400' : 'text-slate-600'}`}>
+              {vibrateCount}
             </span>
           </div>
           <button
