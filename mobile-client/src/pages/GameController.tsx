@@ -6,15 +6,9 @@ import { useHapticFeedback } from '../hooks/useHapticFeedback'
 import { GestureState } from '../sensors/gestureDetector'
 import { Wifi, WifiOff } from 'lucide-react'
 
-const isIOSWeb = (): boolean => {
-  if (typeof navigator === 'undefined') return false
-  return /iPad|iPhone|iPod/.test(navigator.userAgent)
-}
-
 const GameController = () => {
   const location = useLocation()
   const { roomId, playerName, beyType } = location.state || {}
-  const iosWeb = isIOSWeb()
 
   const sensorData = useSensor()
   const { isConnected, gameState, sendInput, isVibrationSupported, fxPulse, lastFxIntent } = useSocket(
@@ -76,9 +70,9 @@ const GameController = () => {
   }, [ensureAudioContext])
 
   useEffect(() => {
-    if (!iosWeb || fxPulse <= 0) return
+    if (fxPulse <= 0) return
     playImpactTone(lastFxIntent)
-  }, [fxPulse, iosWeb, lastFxIntent, playImpactTone])
+  }, [fxPulse, lastFxIntent, playImpactTone])
 
   // 30fps で操作情報をサーバーに送信
   useEffect(() => {
@@ -145,7 +139,7 @@ const GameController = () => {
       className="flex flex-col min-h-screen bg-[#0a0a12] text-white select-none touch-none overflow-hidden"
       onTouchStart={ensureAudioContext}
     >
-      {fxPulse > 0 && iosWeb && (
+      {fxPulse > 0 && (
         <div
           key={fxPulse}
           className="pointer-events-none fixed inset-0 z-20"
@@ -180,7 +174,7 @@ const GameController = () => {
               <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Connected</span>
             </div>
             <span className={`text-[8px] uppercase tracking-tighter ${isVibrationSupported ? 'text-emerald-500/50' : 'text-red-500/50'}`}>
-              {iosWeb ? 'Feedback: VISUAL + SOUND' : `Vibrate: ${isVibrationSupported ? 'OK' : 'NO'}`}
+              {`Feedback: VISUAL + SOUND${isVibrationSupported ? ' + VIBRATION' : ''}`}
             </span>
           </div>
         ) : (
@@ -283,7 +277,7 @@ const GameController = () => {
           <div className="flex items-center justify-between">
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.18em]">Feedback Mode</p>
             <span className={`text-[9px] uppercase tracking-widest ${isHapticOrSoundSupported ? 'text-emerald-500/70' : 'text-red-500/70'}`}>
-              {iosWeb ? 'VISUAL + SOUND (iOS)' : 'VIBRATION + SOUND'}
+              {isVibrationSupported ? 'VISUAL + SOUND + VIBRATION' : 'VISUAL + SOUND'}
             </span>
           </div>
         </div>
