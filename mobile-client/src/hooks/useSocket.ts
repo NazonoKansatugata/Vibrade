@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { controlSocket } from '../socket/controlSocket';
-import { ServerEvents } from '../socket/events';
+import { ClientEvents, ServerEvents } from '../socket/events';
 
 const ENABLE_SOCKET_TIMELINE = true;
 
@@ -31,6 +31,7 @@ export const useSocket = (roomId: string, playerName: string) => {
   const [isConnected, setIsConnected] = useState(false);
   const [gameState, setGameState] = useState<GameStateData | null>(null);
   const [debugEvents, setDebugEvents] = useState<SocketDebugEvent[]>([]);
+  const [lastLaunchAckedAt, setLastLaunchAckedAt] = useState<number | null>(null);
   const lastInputLogAt = useRef(0);
   const lastLaunchLogAt = useRef(0);
 
@@ -101,12 +102,22 @@ export const useSocket = (roomId: string, playerName: string) => {
       appendDebugEvent(ServerEvents.ERROR, `${err.code}: ${err.message}`);
     };
 
+    // サーバーが launchBey をルームにリレーしたとき、自分も受け取る
+    const onLaunchAck = (data: { playerSocketId: string }) => {
+      // 自分（このソケット）の送信がサーバーに届いてリレーされたものだけ拾う
+      if (data.playerSocketId === socket.id) {
+        setLastLaunchAckedAt(Date.now());
+        appendDebugEvent('ack:launchBey', `from server`);
+      }
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on(ServerEvents.GAME_STATE, onGameState);
     socket.on(ServerEvents.GAME_START, onGameStarted);
     socket.on(ServerEvents.COLLISION, onCollision);
     socket.on(ServerEvents.ERROR, onError);
+    socket.on(ClientEvents.LAUNCH_BEY, onLaunchAck);
 
     return () => {
       window.clearTimeout(joinLogTimer);
@@ -116,6 +127,7 @@ export const useSocket = (roomId: string, playerName: string) => {
       socket.off(ServerEvents.GAME_START, onGameStarted);
       socket.off(ServerEvents.COLLISION, onCollision);
       socket.off(ServerEvents.ERROR, onError);
+      socket.off(ClientEvents.LAUNCH_BEY, onLaunchAck);
       controlSocket.disconnect();
     };
   }, [roomId, playerName]);
@@ -140,6 +152,7 @@ export const useSocket = (roomId: string, playerName: string) => {
     isConnected,
     gameState,
     debugEvents: ENABLE_SOCKET_TIMELINE ? debugEvents : [],
-    sendInput
+    sendInput,
+    lastLaunchAckedAt,
   };
 };

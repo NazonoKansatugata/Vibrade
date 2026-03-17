@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, Navigate } from 'react-router-dom'
 import { useSensor } from '../hooks/useSensor'
 import { useSocket } from '../hooks/useSocket'
@@ -12,9 +12,11 @@ const GameController = () => {
   const { roomId, playerName } = location.state || {}
 
   const sensorData = useSensor()
-  const { isConnected, gameState, debugEvents, sendInput } = useSocket(roomId || '', playerName || '')
+  const { isConnected, gameState, debugEvents, sendInput, lastLaunchAckedAt } = useSocket(roomId || '', playerName || '')
   const latestSensorRef = useRef({ tiltX: 0, tiltY: 0, shakePower: 0 })
   const sendInputRef = useRef(sendInput)
+  const [showActionBanner, setShowActionBanner] = useState(false)
+  const actionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     latestSensorRef.current = {
@@ -27,6 +29,14 @@ const GameController = () => {
   useEffect(() => {
     sendInputRef.current = sendInput
   }, [sendInput])
+
+  // サーバーからACKが届いたら1.5秒間Actionバナーを表示
+  useEffect(() => {
+    if (!lastLaunchAckedAt) return
+    setShowActionBanner(true)
+    if (actionTimerRef.current) clearTimeout(actionTimerRef.current)
+    actionTimerRef.current = setTimeout(() => setShowActionBanner(false), 1500)
+  }, [lastLaunchAckedAt])
 
   // 30fps で操作情報をサーバーに送信
   useEffect(() => {
@@ -183,6 +193,17 @@ const GameController = () => {
             </div>
           </div>
           <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-semibold">傾きで方向制御</p>
+
+          {/* Launch ACK banner */}
+          <div
+            className={`transition-all duration-300 overflow-hidden ${
+              showActionBanner ? 'opacity-100 max-h-12' : 'opacity-0 max-h-0'
+            }`}
+          >
+            <div className="mt-2 px-6 py-2 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-sm font-black tracking-[0.3em] uppercase text-center shadow-[0_0_16px_rgba(52,211,153,0.4)]">
+              ✓ Action
+            </div>
+          </div>
         </div>
 
         {/* Shake / Gesture indicator */}
