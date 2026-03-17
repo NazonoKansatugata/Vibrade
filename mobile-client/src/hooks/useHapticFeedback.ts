@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 
 type FeedbackIntent = 'default' | 'light' | 'impact' | 'launch';
 export type HapticMode = 'vibration-api' | 'ios-checkbox' | 'none';
@@ -14,7 +14,14 @@ const getHapticCheckbox = (): HTMLInputElement | null => {
   const el = document.createElement('input');
   el.type = 'checkbox';
   el.setAttribute('switch', '');
-  el.style.cssText = 'position:fixed;opacity:0;pointer-events:none;width:0;height:0;';
+  const debugVisible = isIOSCheckboxHapticAvailable();
+  el.style.cssText = debugVisible
+    ? 'position:fixed;right:14px;bottom:14px;width:52px;height:32px;opacity:0.95;z-index:9999;'
+    : 'position:fixed;opacity:0;pointer-events:none;width:0;height:0;';
+  if (debugVisible) {
+    el.title = 'iOS Haptic Switch (debug)';
+    el.setAttribute('aria-label', 'iOS Haptic Switch (debug)');
+  }
   document.body.appendChild(el);
   hapticCheckbox = el;
   return el;
@@ -66,6 +73,12 @@ export const getHapticMode = (): HapticMode => {
 export const isHapticSupported = (): boolean => getHapticMode() !== 'none';
 
 export const useHapticFeedback = () => {
+  useEffect(() => {
+    if (isIOSCheckboxHapticAvailable()) {
+      getHapticCheckbox();
+    }
+  }, []);
+
   const triggerFeedback = useCallback((pattern: number[] = [200], intent: FeedbackIntent = 'default') => {
     if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
 
