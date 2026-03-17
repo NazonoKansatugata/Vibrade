@@ -27,6 +27,7 @@ const Game = () => {
 
   const handleRetry = useCallback(() => {
     if (!latestGameStart) return
+    setSceneGameState(undefined)
     setRetrySeed((prev) => prev + 1)
   }, [latestGameStart])
 

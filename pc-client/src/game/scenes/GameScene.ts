@@ -306,10 +306,19 @@ class GameScene extends Phaser.Scene {
     const active = Array.from(this.runtimeBeys.values()).filter((bey) => bey.isActive)
     const total = this.runtimeBeys.size
 
-    if (total <= 1) {
+    if (total === 0) return
+
+    // ソロプレイ: ベイが脱落したら勝敗なし（負け）で終了
+    if (total === 1) {
+      if (active.length === 0) {
+        this.isGameActive = false
+        this.status = 'ended'
+        this.winnerId = undefined
+      }
       return
     }
 
+    // 2人以上: 残り1人以下で終了
     if (active.length <= 1) {
       this.isGameActive = false
       this.status = 'ended'
