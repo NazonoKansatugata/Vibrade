@@ -49,6 +49,8 @@ class GameScene extends Phaser.Scene {
   private tick = 0
   private accumulatorMs = 0
   private lastFrameAt = 0
+  private isSceneReady = false
+  private pendingStartPayload?: GameStartPayload
 
   constructor(roomId: string, onStateChange?: (gameState: GameState) => void) {
     super({ key: 'game-scene' })
@@ -57,12 +59,21 @@ class GameScene extends Phaser.Scene {
   }
 
   create() {
+    this.isSceneReady = true
     this.cameras.main.setBackgroundColor('#0f172a')
     this.buildScene(this.scale.width, this.scale.height)
     this.infoLabel?.setText('Waiting for host to start')
 
+    if (this.pendingStartPayload) {
+      const payload = this.pendingStartPayload
+      this.pendingStartPayload = undefined
+      this.startSimulation(payload)
+    }
+
     this.scale.on('resize', this.handleResize, this)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.isSceneReady = false
+      this.pendingStartPayload = undefined
       this.beySprites.forEach((bey) => bey.destroy())
       this.beySprites.clear()
       this.scale.off('resize', this.handleResize, this)
@@ -90,6 +101,11 @@ class GameScene extends Phaser.Scene {
 
   startSimulation(payload: GameStartPayload) {
     if (payload.roomId !== this.roomId) {
+      return
+    }
+
+    if (!this.isSceneReady) {
+      this.pendingStartPayload = payload
       return
     }
 
