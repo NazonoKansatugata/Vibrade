@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { controlSocket } from '../socket/controlSocket';
 import { ServerEvents } from '../socket/events';
+import { useHapticFeedback } from './useHapticFeedback';
 
 const ENABLE_SOCKET_TIMELINE = true;
 
@@ -33,6 +34,7 @@ export const useSocket = (roomId: string, playerName: string) => {
   const [debugEvents, setDebugEvents] = useState<SocketDebugEvent[]>([]);
   const lastInputLogAt = useRef(0);
   const lastLaunchLogAt = useRef(0);
+  const { triggerFeedback } = useHapticFeedback();
 
   const appendDebugEvent = (event: string, detail?: string) => {
     if (!ENABLE_SOCKET_TIMELINE) {
@@ -91,10 +93,8 @@ export const useSocket = (roomId: string, playerName: string) => {
 
     const onCollision = () => {
       appendDebugEvent(ServerEvents.COLLISION);
-      // 衝突時の振動フィードバック
-      if (navigator.vibrate) {
-        navigator.vibrate([100, 50, 100]); // ブッ、ブッ
-      }
+      // 衝突時のフィードバック
+      triggerFeedback([100, 50, 100]);
     };
 
     const onError = (err: SocketErrorPayload) => {
@@ -127,7 +127,7 @@ export const useSocket = (roomId: string, playerName: string) => {
       socket.off(ServerEvents.ERROR, onError);
       controlSocket.disconnect();
     };
-  }, [roomId, playerName]);
+  }, [roomId, playerName, triggerFeedback]);
 
   // Socket経由で入力を送信する関数
   const sendInput = (tiltX: number, tiltY: number, shakePower: number) => {
@@ -149,6 +149,7 @@ export const useSocket = (roomId: string, playerName: string) => {
     isConnected,
     gameState,
     debugEvents: ENABLE_SOCKET_TIMELINE ? debugEvents : [],
-    sendInput
+    sendInput,
+    isVibrationSupported: !!navigator.vibrate
   };
 };
