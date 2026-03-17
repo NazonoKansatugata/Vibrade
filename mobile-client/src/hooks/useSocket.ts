@@ -3,6 +3,13 @@ import { controlSocket } from '../socket/controlSocket';
 import { ServerEvents } from '../socket/events';
 import { isHapticSupported, useHapticFeedback } from './useHapticFeedback';
 
+const isIOSWeb = (): boolean => {
+  if (typeof navigator === 'undefined') return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+};
+
+export type FeedbackFxIntent = 'impact' | 'launch';
+
 export interface GameStateData {
   roomId: string;
   status: 'waiting' | 'armed' | 'playing' | 'ended';
@@ -20,7 +27,8 @@ export interface GameStateData {
 export const useSocket = (roomId: string, playerName: string, beyType: string) => {
   const [isConnected, setIsConnected] = useState(false);
   const [gameState, setGameState] = useState<GameStateData | null>(null);
-  const [vibrateCount, setVibrateCount] = useState(0);
+  const [fxPulse, setFxPulse] = useState(0);
+  const [lastFxIntent, setLastFxIntent] = useState<FeedbackFxIntent>('impact');
   const wasLaunchActiveRef = useRef(false);
   const { triggerFeedback } = useHapticFeedback();
 
@@ -60,16 +68,23 @@ export const useSocket = (roomId: string, playerName: string, beyType: string) =
     };
 
     const onCollision = () => {
-      // 衝突時のフィードバック
-      triggerFeedback([100, 50, 100], 'impact');
+      // iOSは視覚+音を標準。Androidなどはハプティックも併用。
+      setLastFxIntent('impact');
+      setFxPulse((prev) => prev + 1);
+      if (!isIOSWeb()) {
+        triggerFeedback([100, 50, 100], 'impact');
+      }
     };
 
     const onError = () => {
     };
 
     const onVibrate = (data: { pattern?: number[] }) => {
-      setVibrateCount((prev) => prev + 1);
-      triggerFeedback(data.pattern || [200, 100, 200], 'launch');
+      setLastFxIntent('launch');
+      setFxPulse((prev) => prev + 1);
+      if (!isIOSWeb()) {
+        triggerFeedback(data.pattern || [200, 100, 200], 'launch');
+      }
     };
 
     socket.on('connect', onConnect);
@@ -107,6 +122,7 @@ export const useSocket = (roomId: string, playerName: string, beyType: string) =
     gameState,
     sendInput,
     isVibrationSupported: isHapticSupported(),
-    vibrateCount,
+    fxPulse,
+    lastFxIntent,
   };
 };

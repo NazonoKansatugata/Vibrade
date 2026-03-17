@@ -1,26 +1,31 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useLocation, Navigate } from 'react-router-dom'
 import { useSensor } from '../hooks/useSensor'
 import { useSocket } from '../hooks/useSocket'
-import { useHapticFeedback, getHapticMode, consumePendingHapticPulses } from '../hooks/useHapticFeedback'
+import { useHapticFeedback } from '../hooks/useHapticFeedback'
 import { GestureState } from '../sensors/gestureDetector'
 import { Wifi, WifiOff } from 'lucide-react'
+
+const isIOSWeb = (): boolean => {
+  if (typeof navigator === 'undefined') return false
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+}
 
 const GameController = () => {
   const location = useLocation()
   const { roomId, playerName, beyType } = location.state || {}
+  const iosWeb = isIOSWeb()
 
   const sensorData = useSensor()
-  const { isConnected, gameState, sendInput, isVibrationSupported, vibrateCount } = useSocket(
+  const { isConnected, gameState, sendInput, isVibrationSupported, fxPulse, lastFxIntent } = useSocket(
     roomId || '',
     playerName || '',
     beyType || 'balance'
   )
-  const { triggerFeedback, isSupported: isHapticOrSoundSupported } = useHapticFeedback()
-  const hapticMode = getHapticMode()
+  const { isSupported: isHapticOrSoundSupported } = useHapticFeedback()
   const latestSensorRef = useRef({ tiltX: 0, tiltY: 0, shakePower: 0 })
   const sendInputRef = useRef(sendInput)
-  const touchConsumeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const audioContextRef = useRef<AudioContext | null>(null)
 
   useEffect(() => {
     latestSensorRef.current = {
@@ -34,14 +39,46 @@ const GameController = () => {
     sendInputRef.current = sendInput
   }, [sendInput])
 
-  useEffect(() => {
-    return () => {
-      if (touchConsumeTimerRef.current) {
-        clearInterval(touchConsumeTimerRef.current)
-        touchConsumeTimerRef.current = null
-      }
+  const ensureAudioContext = useCallback(() => {
+    if (typeof window === 'undefined') return null
+    const Ctx = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!Ctx) return null
+
+    if (!audioContextRef.current) {
+      audioContextRef.current = new Ctx()
     }
+
+    const ctx = audioContextRef.current
+    if (ctx.state === 'suspended') {
+      void ctx.resume()
+    }
+    return ctx
   }, [])
+
+  const playImpactTone = useCallback((intent: 'impact' | 'launch') => {
+    const ctx = ensureAudioContext()
+    if (!ctx) return
+
+    const now = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+
+    osc.type = intent === 'launch' ? 'sawtooth' : 'triangle'
+    osc.frequency.setValueAtTime(intent === 'launch' ? 180 : 130, now)
+    gain.gain.setValueAtTime(0.0001, now)
+    gain.gain.exponentialRampToValueAtTime(0.08, now + 0.01)
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + (intent === 'launch' ? 0.14 : 0.1))
+
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.start(now)
+    osc.stop(now + (intent === 'launch' ? 0.16 : 0.12))
+  }, [ensureAudioContext])
+
+  useEffect(() => {
+    if (!iosWeb || fxPulse <= 0) return
+    playImpactTone(lastFxIntent)
+  }, [fxPulse, iosWeb, lastFxIntent, playImpactTone])
 
   // 30fps で操作情報をサーバーに送信
   useEffect(() => {
@@ -103,30 +140,23 @@ const GameController = () => {
   const powerPct = Math.round(sensorData.shakePower * 100)
   const isLaunchReady = gameState?.status === 'armed'
 
-  const startTouchConsumeLoop = () => {
-    // ジェスチャー開始直後に1回消費して即時性を上げる
-    consumePendingHapticPulses()
-    if (touchConsumeTimerRef.current) return
-    // 指を置きっぱなしでも一定間隔で消費できるようにする
-    touchConsumeTimerRef.current = setInterval(() => {
-      consumePendingHapticPulses()
-    }, 80)
-  }
-
-  const stopTouchConsumeLoop = () => {
-    if (!touchConsumeTimerRef.current) return
-    clearInterval(touchConsumeTimerRef.current)
-    touchConsumeTimerRef.current = null
-  }
-
   return (
     <div
       className="flex flex-col min-h-screen bg-[#0a0a12] text-white select-none touch-none overflow-hidden"
-      onTouchStart={startTouchConsumeLoop}
-      onTouchMove={() => consumePendingHapticPulses()}
-      onTouchEnd={stopTouchConsumeLoop}
-      onTouchCancel={stopTouchConsumeLoop}
+      onTouchStart={ensureAudioContext}
     >
+      {fxPulse > 0 && iosWeb && (
+        <div
+          key={fxPulse}
+          className="pointer-events-none fixed inset-0 z-20"
+          style={{
+            background: lastFxIntent === 'launch' ? 'rgba(239, 68, 68, 0.24)' : 'rgba(59, 130, 246, 0.2)',
+            animation: 'vibradeFxFlash 220ms ease-out forwards',
+          }}
+        />
+      )}
+      <style>{`@keyframes vibradeFxFlash { from { opacity: 0.95; } to { opacity: 0; } }`}</style>
+
       {/* Ambient background */}
       <div className="fixed inset-0 pointer-events-none">
         <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full blur-[120px] transition-all duration-500 ${
@@ -150,7 +180,7 @@ const GameController = () => {
               <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Connected</span>
             </div>
             <span className={`text-[8px] uppercase tracking-tighter ${isVibrationSupported ? 'text-emerald-500/50' : 'text-red-500/50'}`}>
-              Vibrate: {isVibrationSupported ? 'OK' : 'NO'}
+              {iosWeb ? 'Feedback: VISUAL + SOUND' : `Vibrate: ${isVibrationSupported ? 'OK' : 'NO'}`}
             </span>
           </div>
         ) : (
@@ -249,29 +279,13 @@ const GameController = () => {
           スマホを<strong className="text-slate-400">強く振る</strong>とベイを発射 ／ <strong className="text-slate-400">傾ける</strong>と移動
         </p>
 
-        {/* Haptic Test */}
         <div className="w-full rounded-2xl border border-white/10 bg-black/30 p-3">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.18em]">Haptic Test</p>
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.18em]">Feedback Mode</p>
             <span className={`text-[9px] uppercase tracking-widest ${isHapticOrSoundSupported ? 'text-emerald-500/70' : 'text-red-500/70'}`}>
-              {hapticMode === 'vibration-api' && 'VIBRATE API'}
-              {hapticMode === 'ios-checkbox' && '✦ iOS HAPTIC'}
-              {hapticMode === 'none' && 'UNAVAILABLE'}
+              {iosWeb ? 'VISUAL + SOUND (iOS)' : 'VIBRATION + SOUND'}
             </span>
           </div>
-          {/* VIBRATE 受信カウント（デバッグ用） */}
-          <div className="flex items-center justify-between mb-2 px-1">
-            <span className="text-[9px] text-slate-500 uppercase tracking-widest">Server VIBRATE received</span>
-            <span className={`text-[10px] font-mono font-bold ${vibrateCount > 0 ? 'text-yellow-400' : 'text-slate-600'}`}>
-              {vibrateCount}
-            </span>
-          </div>
-          <button
-            className="w-full py-2.5 rounded-xl border border-white/10 bg-white/5 active:bg-white/10 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-300 transition-colors"
-            onClick={() => triggerFeedback([100], 'default', true)}
-          >
-            Test Vibration
-          </button>
         </div>
       </div>
     </div>
