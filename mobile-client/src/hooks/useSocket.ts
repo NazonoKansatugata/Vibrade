@@ -103,9 +103,7 @@ export const useSocket = (roomId: string, playerName: string) => {
 
     const onVibrate = (data: { pattern?: number[] }) => {
       appendDebugEvent(ServerEvents.VIBRATE);
-      if (navigator.vibrate) {
-        navigator.vibrate(data.pattern || [200, 100, 200]);
-      }
+      triggerFeedback(data.pattern || [200, 100, 200]);
     };
 
     socket.on('connect', onConnect);
