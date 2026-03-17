@@ -6,8 +6,13 @@ export type HapticMode = 'vibration-api' | 'ios-checkbox' | 'none';
 // ── iOS 18+ Safari: <input type="checkbox" switch> haptic hack ──────────────
 // iOS 18 でトグルスイッチの触覚フィードバックが追加され、
 // .click() をスクリプトから呼ぶだけで実振動を発動できる。
+//
+// ⚠️ iOS制約: setTimeout 経由の .click() はユーザジェスチャー外とみなされ無効。
+// 解決策: touchstart リスナー内（ジェスチャー有効コンテキスト）で pending パルスを消費する。
 let hapticCheckbox: HTMLInputElement | null = null;
 let hapticSwitchLabel: HTMLLabelElement | null = null;
+// サーバー起因の振動要求をキューイング。次の touchstart で消費する。
+let pendingHapticPulses = 0;
 
 const getHapticCheckbox = (): HTMLInputElement | null => {
   if (typeof document === 'undefined') return null;
@@ -43,6 +48,20 @@ const getHapticCheckbox = (): HTMLInputElement | null => {
   document.body.appendChild(label);
   hapticSwitchLabel = label;
   hapticCheckbox = el;
+
+  // touchstart でペンディング中のパルスを消費する（iOS ジェスチャーコンテキスト内で実行）
+  document.addEventListener('touchstart', () => {
+    if (pendingHapticPulses <= 0) return;
+    const count = pendingHapticPulses;
+    pendingHapticPulses = 0;
+    const t = hapticSwitchLabel ?? hapticCheckbox;
+    if (!t) return;
+    for (let i = 0; i < count; i++) {
+      // 連打時は少しズラして iOS が別パルスとして認識できるようにする
+      setTimeout(() => t.click(), i * 50);
+    }
+  }, { passive: true });
+
   return el;
 };
 
@@ -56,21 +75,42 @@ const isIOSCheckboxHapticAvailable = (): boolean => {
   return isSafariLike && ver >= 18;
 };
 
-const playCheckboxPattern = (pattern: number[]) => {
-  const el = getHapticCheckbox();
-  if (!el) return;
-  const target = hapticSwitchLabel ?? el;
-  // 偶数indexが振動区間。50ms ≒ 1パルスとして分割して連打する
-  let cursorMs = 0;
+// fromUserGesture=true のとき: ジェスチャーコンテキスト内なので直接 click() を呼ぶ
+// fromUserGesture=false のとき: Socket 起因。pendingHapticPulses に積み、次のtouchstartで消費
+const playCheckboxPattern = (pattern: number[], fromUserGesture: boolean) => {
+  if (!isIOSCheckboxHapticAvailable()) return;
+  getHapticCheckbox(); // 初回生成を保証
+
+  // パターンから総パルス数を計算 (偶数index = 振動区間)
+  let totalPulses = 0;
   for (let i = 0; i < pattern.length; i += 1) {
-    const segMs = Math.max(0, pattern[i] || 0);
-    if (i % 2 === 0 && segMs > 0) {
-      const pulseCount = Math.max(1, Math.round(segMs / 50));
-      for (let p = 0; p < pulseCount; p += 1) {
-        setTimeout(() => target.click(), cursorMs + p * 50);
-      }
+    if (i % 2 === 0) {
+      const segMs = Math.max(0, pattern[i] || 0);
+      totalPulses += Math.max(1, Math.round(segMs / 50));
     }
-    cursorMs += segMs;
+  }
+  if (totalPulses <= 0) totalPulses = 1;
+
+  if (fromUserGesture) {
+    // ユーザジェスチャー文脈: 直接 click()
+    const target = hapticSwitchLabel ?? hapticCheckbox;
+    if (!target) return;
+    let cursorMs = 0;
+    let pIdx = 0;
+    for (let i = 0; i < pattern.length; i += 1) {
+      const segMs = Math.max(0, pattern[i] || 0);
+      if (i % 2 === 0 && segMs > 0) {
+        const pulseCount = Math.max(1, Math.round(segMs / 50));
+        for (let p = 0; p < pulseCount; p += 1) {
+          setTimeout(() => target.click(), cursorMs + pIdx * 50);
+          pIdx++;
+        }
+      }
+      cursorMs += segMs;
+    }
+  } else {
+    // Socket 起因: pending に積み、次の touchstart で消費
+    pendingHapticPulses += totalPulses;
   }
 };
 
@@ -99,7 +139,7 @@ export const useHapticFeedback = () => {
     }
   }, []);
 
-  const triggerFeedback = useCallback((pattern: number[] = [200], intent: FeedbackIntent = 'default') => {
+  const triggerFeedback = useCallback((pattern: number[] = [200], intent: FeedbackIntent = 'default', fromUserGesture = false) => {
     if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
 
     // Android/Chrome: Vibration API
@@ -110,7 +150,7 @@ export const useHapticFeedback = () => {
 
     // iOS 18+ Safari: checkbox switch haptic hack
     if (isIOSCheckboxHapticAvailable()) {
-      playCheckboxPattern(getIntentPattern(intent, pattern));
+      playCheckboxPattern(getIntentPattern(intent, pattern), fromUserGesture);
     }
   }, []);
 
