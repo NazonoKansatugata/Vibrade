@@ -19,7 +19,7 @@ const Game = () => {
   const [actionFlash, setActionFlash] = useState<{ playerSocketId: string; power: number } | null>(null)
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const { latestGameStart, latestPlayerInput, latestPlayerInputs, players, triggerVibrate } = useGameSocket(resolvedRoomId, {
+  const { latestGameStart, latestPlayerInput, latestPlayerInputs, players, triggerVibrate, latestLaunchBey } = useGameSocket(resolvedRoomId, {
     onLaunch: (payload) => {
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
       setActionFlash({ playerSocketId: payload.playerSocketId, power: payload.power })
@@ -112,6 +112,7 @@ const Game = () => {
           roomId={resolvedRoomId}
           startPayload={latestGameStart}
           inputPayload={latestPlayerInput}
+          launchPayload={latestLaunchBey}
           onGameStateChange={handleStateChange}
           retrySeed={retrySeed}
         />
