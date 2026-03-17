@@ -49,25 +49,17 @@ const getHapticCheckbox = (): HTMLInputElement | null => {
   hapticSwitchLabel = label;
   hapticCheckbox = el;
 
-  // touchstart でペンディング中のパルスを消費する（iOS ジェスチャーコンテキスト内で実行）
-  document.addEventListener('touchstart', () => {
-    consumePendingHapticPulses();
-  }, { passive: true });
-
   return el;
 };
 
 // React の onTouchStart からも呼べるよう export する
 export const consumePendingHapticPulses = (): void => {
   if (pendingHapticPulses <= 0) return;
-  const count = pendingHapticPulses;
-  pendingHapticPulses = 0;
+  // iOSでは非同期化するとジェスチャー文脈を失うため、1タップで1パルスだけ同期実行する。
+  pendingHapticPulses -= 1;
   const t = hapticSwitchLabel ?? hapticCheckbox;
   if (!t) return;
-  for (let i = 0; i < count; i++) {
-    // 連打時は少しズラして iOS が別パルスとして認識できるようにする
-    setTimeout(() => t.click(), i * 50);
-  }
+  t.click();
 };
 
 const isIOSCheckboxHapticAvailable = (): boolean => {
@@ -100,18 +92,8 @@ const playCheckboxPattern = (pattern: number[], fromUserGesture: boolean) => {
     // ユーザジェスチャー文脈: 直接 click()
     const target = hapticSwitchLabel ?? hapticCheckbox;
     if (!target) return;
-    let cursorMs = 0;
-    let pIdx = 0;
-    for (let i = 0; i < pattern.length; i += 1) {
-      const segMs = Math.max(0, pattern[i] || 0);
-      if (i % 2 === 0 && segMs > 0) {
-        const pulseCount = Math.max(1, Math.round(segMs / 50));
-        for (let p = 0; p < pulseCount; p += 1) {
-          setTimeout(() => target.click(), cursorMs + pIdx * 50);
-          pIdx++;
-        }
-      }
-      cursorMs += segMs;
+    for (let i = 0; i < totalPulses; i += 1) {
+      target.click();
     }
   } else {
     // Socket 起因: pending に積み、次の touchstart で消費

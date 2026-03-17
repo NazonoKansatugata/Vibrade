@@ -20,6 +20,7 @@ const GameController = () => {
   const hapticMode = getHapticMode()
   const latestSensorRef = useRef({ tiltX: 0, tiltY: 0, shakePower: 0 })
   const sendInputRef = useRef(sendInput)
+  const touchConsumeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     latestSensorRef.current = {
@@ -32,6 +33,15 @@ const GameController = () => {
   useEffect(() => {
     sendInputRef.current = sendInput
   }, [sendInput])
+
+  useEffect(() => {
+    return () => {
+      if (touchConsumeTimerRef.current) {
+        clearInterval(touchConsumeTimerRef.current)
+        touchConsumeTimerRef.current = null
+      }
+    }
+  }, [])
 
   // 30fps で操作情報をサーバーに送信
   useEffect(() => {
@@ -93,10 +103,29 @@ const GameController = () => {
   const powerPct = Math.round(sensorData.shakePower * 100)
   const isLaunchReady = gameState?.status === 'armed'
 
+  const startTouchConsumeLoop = () => {
+    // ジェスチャー開始直後に1回消費して即時性を上げる
+    consumePendingHapticPulses()
+    if (touchConsumeTimerRef.current) return
+    // 指を置きっぱなしでも一定間隔で消費できるようにする
+    touchConsumeTimerRef.current = setInterval(() => {
+      consumePendingHapticPulses()
+    }, 80)
+  }
+
+  const stopTouchConsumeLoop = () => {
+    if (!touchConsumeTimerRef.current) return
+    clearInterval(touchConsumeTimerRef.current)
+    touchConsumeTimerRef.current = null
+  }
+
   return (
     <div
       className="flex flex-col min-h-screen bg-[#0a0a12] text-white select-none touch-none overflow-hidden"
-      onTouchStart={() => consumePendingHapticPulses()}
+      onTouchStart={startTouchConsumeLoop}
+      onTouchMove={() => consumePendingHapticPulses()}
+      onTouchEnd={stopTouchConsumeLoop}
+      onTouchCancel={stopTouchConsumeLoop}
     >
       {/* Ambient background */}
       <div className="fixed inset-0 pointer-events-none">
