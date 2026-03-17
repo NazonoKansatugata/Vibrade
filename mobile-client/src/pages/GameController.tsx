@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useLocation, Navigate } from 'react-router-dom'
 import { useSensor } from '../hooks/useSensor'
 import { useSocket } from '../hooks/useSocket'
-import { useHapticFeedback } from '../hooks/useHapticFeedback'
+import { useHapticFeedback, getHapticMode } from '../hooks/useHapticFeedback'
 import { GestureState } from '../sensors/gestureDetector'
 import { Wifi, WifiOff } from 'lucide-react'
 
@@ -14,7 +14,8 @@ const GameController = () => {
 
   const sensorData = useSensor()
   const { isConnected, gameState, debugEvents, sendInput, isVibrationSupported } = useSocket(roomId || '', playerName || '')
-  const { triggerFeedback } = useHapticFeedback()
+  const { triggerFeedback, isSupported: isHapticOrSoundSupported } = useHapticFeedback()
+  const hapticMode = getHapticMode()
   const latestSensorRef = useRef({ tiltX: 0, tiltY: 0, shakePower: 0 })
   const sendInputRef = useRef(sendInput)
 
@@ -229,13 +230,23 @@ const GameController = () => {
           スマホを<strong className="text-slate-400">強く振る</strong>とベイを発射 ／ <strong className="text-slate-400">傾ける</strong>と移動
         </p>
 
-        {/* Vibration Test Button */}
-        <button
-          className="w-full py-2.5 rounded-xl border border-white/10 bg-white/5 active:bg-white/10 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 transition-colors"
-          onClick={() => triggerFeedback([200])}
-        >
-          Vibration Test
-        </button>
+        {/* Haptic Test */}
+        <div className="w-full rounded-2xl border border-white/10 bg-black/30 p-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.18em]">Haptic Test</p>
+            <span className={`text-[9px] uppercase tracking-widest ${isHapticOrSoundSupported ? 'text-emerald-500/70' : 'text-red-500/70'}`}>
+              {hapticMode === 'vibration-api' && 'VIBRATE API'}
+              {hapticMode === 'ios-checkbox' && '✦ iOS HAPTIC'}
+              {hapticMode === 'none' && 'UNAVAILABLE'}
+            </span>
+          </div>
+          <button
+            className="w-full py-2.5 rounded-xl border border-white/10 bg-white/5 active:bg-white/10 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-300 transition-colors"
+            onClick={() => triggerFeedback([100])}
+          >
+            Test Vibration
+          </button>
+        </div>
       </div>
     </div>
   )

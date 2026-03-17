@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { controlSocket } from '../socket/controlSocket';
 import { ServerEvents } from '../socket/events';
-import { useHapticFeedback } from './useHapticFeedback';
+import { isHapticSupported, useHapticFeedback } from './useHapticFeedback';
 
 const ENABLE_SOCKET_TIMELINE = true;
 
@@ -95,7 +95,7 @@ export const useSocket = (roomId: string, playerName: string) => {
     const onCollision = () => {
       appendDebugEvent(ServerEvents.COLLISION);
       // 衝突時のフィードバック
-      triggerFeedback([100, 50, 100]);
+      triggerFeedback([100, 50, 100], 'impact');
     };
 
     const onError = (err: SocketErrorPayload) => {
@@ -104,7 +104,7 @@ export const useSocket = (roomId: string, playerName: string) => {
 
     const onVibrate = (data: { pattern?: number[] }) => {
       appendDebugEvent(ServerEvents.VIBRATE);
-      triggerFeedback(data.pattern || [200, 100, 200]);
+      triggerFeedback(data.pattern || [200, 100, 200], 'launch');
     };
 
     socket.on('connect', onConnect);
@@ -154,6 +154,6 @@ export const useSocket = (roomId: string, playerName: string) => {
     gameState,
     debugEvents: ENABLE_SOCKET_TIMELINE ? debugEvents : [],
     sendInput,
-    isVibrationSupported: !!navigator.vibrate
+    isVibrationSupported: isHapticSupported()
   };
 };
