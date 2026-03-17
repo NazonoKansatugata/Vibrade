@@ -16,6 +16,7 @@ export interface Bey {
   vx: number
   vy: number
   energy: number
+  attackAngle?: number
 }
 
 export interface GameState {

@@ -6,7 +6,7 @@ class BeySprite {
   private readonly body: Phaser.GameObjects.Arc
   private readonly core: Phaser.GameObjects.Arc
   private readonly ring: Phaser.GameObjects.Arc
-  private readonly highlight: Phaser.GameObjects.Rectangle
+  private readonly attackPoint: Phaser.GameObjects.Arc
   private readonly nameLabel: Phaser.GameObjects.Text
   private spinVelocity = 4
 
@@ -20,8 +20,8 @@ class BeySprite {
     this.ring.setStrokeStyle(3, 0xffffff, 0.4)
 
     this.core = scene.add.circle(0, 0, 8, 0xf8fafc, 1)
-    this.highlight = scene.add.rectangle(-8, -10, 12, 4, 0xffffff, 0.55)
-    this.highlight.setAngle(-24)
+    this.attackPoint = scene.add.circle(0, -24, 5, 0xef4444, 1)
+    this.attackPoint.setStrokeStyle(2, 0xfef2f2, 0.9)
 
     this.nameLabel = scene.add.text(0, -54, playerName, {
       fontFamily: 'Segoe UI',
@@ -36,7 +36,7 @@ class BeySprite {
       this.body,
       this.ring,
       this.core,
-      this.highlight,
+      this.attackPoint,
       this.nameLabel,
     ])
     this.root.setDepth(10)
@@ -47,13 +47,18 @@ class BeySprite {
 
     const speed = Math.sqrt(state.vx * state.vx + state.vy * state.vy)
     this.spinVelocity = Math.max(1.5, speed * 0.9)
+    const attackAngle = state.attackAngle ?? 0
+    const orbitRadius = 24
+    this.attackPoint.setPosition(
+      Math.cos(attackAngle) * orbitRadius,
+      Math.sin(attackAngle) * orbitRadius,
+    )
 
     this.root.setAlpha(state.energy > 0 ? 1 : 0.35)
   }
 
   tick() {
     this.ring.rotation += 0.05 * this.spinVelocity
-    this.highlight.rotation += 0.02 * this.spinVelocity
   }
 
   destroy() {

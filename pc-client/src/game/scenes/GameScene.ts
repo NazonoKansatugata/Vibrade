@@ -18,6 +18,10 @@ const COLLISION_RINGOUT_MAX_TICKS = 14
 const BASE_DAMAGE = 7
 const IMPACT_MULTIPLIER = 0.45
 const BEY_RADIUS = 30
+const ATTACK_POINT_HIT_DOT = 0.88
+const ATTACK_POINT_DAMAGE_MULTIPLIER = 2.2
+const ATTACK_POINT_KNOCKBACK_MULTIPLIER = 1.75
+const ATTACK_POINT_SELF_RECOIL = 0.35
 
 interface RuntimeBey {
   id: string
@@ -30,6 +34,8 @@ interface RuntimeBey {
   isActive: boolean
   radius: number
   ringoutArmedTicks: number
+  attackAngle: number
+  attackSpinRate: number
 }
 
 class GameScene extends Phaser.Scene {
@@ -134,6 +140,8 @@ class GameScene extends Phaser.Scene {
         isActive: true,
         radius: BEY_RADIUS,
         ringoutArmedTicks: 0,
+        attackAngle: ((index * Math.PI) / 2) % (Math.PI * 2),
+        attackSpinRate: 0.18 + (index % 3) * 0.03,
       })
     })
 
@@ -243,6 +251,9 @@ class GameScene extends Phaser.Scene {
         bey.vy = (bey.vy / speed) * MAX_SPEED
       }
 
+      const speed = Math.sqrt(bey.vx * bey.vx + bey.vy * bey.vy)
+      bey.attackAngle = (bey.attackAngle + bey.attackSpinRate * (0.8 + speed / MAX_SPEED)) % (Math.PI * 2)
+
       bey.x += bey.vx
       bey.y += bey.vy
       bey.vx *= FRICTION
@@ -337,6 +348,28 @@ class GameScene extends Phaser.Scene {
         b.y += ny * correction
 
         const impact = knockbackStrength
+
+        const aAttackX = Math.cos(a.attackAngle)
+        const aAttackY = Math.sin(a.attackAngle)
+        const bAttackX = Math.cos(b.attackAngle)
+        const bAttackY = Math.sin(b.attackAngle)
+        const aCriticalHit = aAttackX * nx + aAttackY * ny >= ATTACK_POINT_HIT_DOT
+        const bCriticalHit = bAttackX * -nx + bAttackY * -ny >= ATTACK_POINT_HIT_DOT
+
+        if (aCriticalHit) {
+          const bonus = impact * (ATTACK_POINT_KNOCKBACK_MULTIPLIER - 1)
+          b.vx += bonus * nx
+          b.vy += bonus * ny
+          a.vx -= bonus * ATTACK_POINT_SELF_RECOIL * nx
+          a.vy -= bonus * ATTACK_POINT_SELF_RECOIL * ny
+        }
+        if (bCriticalHit) {
+          const bonus = impact * (ATTACK_POINT_KNOCKBACK_MULTIPLIER - 1)
+          a.vx -= bonus * nx
+          a.vy -= bonus * ny
+          b.vx += bonus * ATTACK_POINT_SELF_RECOIL * nx
+          b.vy += bonus * ATTACK_POINT_SELF_RECOIL * ny
+        }
         const ringoutArmTicks = Math.min(
           COLLISION_RINGOUT_MAX_TICKS,
           Math.max(COLLISION_RINGOUT_MIN_TICKS, Math.round(impact + 4)),
@@ -345,8 +378,12 @@ class GameScene extends Phaser.Scene {
         b.ringoutArmedTicks = Math.max(b.ringoutArmedTicks, ringoutArmTicks)
 
         const aAdv = a.energy / Math.max(1, b.energy)
-        const damageToA = BASE_DAMAGE + (impact * IMPACT_MULTIPLIER) / Math.max(0.2, aAdv)
-        const damageToB = BASE_DAMAGE + impact * IMPACT_MULTIPLIER * Math.max(0.2, aAdv)
+        const damageToA =
+          (BASE_DAMAGE + (impact * IMPACT_MULTIPLIER) / Math.max(0.2, aAdv))
+          * (bCriticalHit ? ATTACK_POINT_DAMAGE_MULTIPLIER : 1)
+        const damageToB =
+          (BASE_DAMAGE + impact * IMPACT_MULTIPLIER * Math.max(0.2, aAdv))
+          * (aCriticalHit ? ATTACK_POINT_DAMAGE_MULTIPLIER : 1)
 
         a.energy = Math.max(0, a.energy - damageToA)
         b.energy = Math.max(0, b.energy - damageToB)
@@ -394,6 +431,7 @@ class GameScene extends Phaser.Scene {
       vx: bey.vx,
       vy: bey.vy,
       energy: bey.energy,
+      attackAngle: bey.attackAngle,
     }))
 
     return {
