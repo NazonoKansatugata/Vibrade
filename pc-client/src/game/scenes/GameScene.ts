@@ -176,6 +176,8 @@ class GameScene extends Phaser.Scene {
     this.countdownState = state
     if (!this.countdownText) return
 
+    this.tweens.killTweensOf(this.countdownText)
+
     let text = ''
     let color = '#ffffff'
     let scale = 1
@@ -206,7 +208,13 @@ class GameScene extends Phaser.Scene {
   private finalizeLaunch() {
     this.status = 'playing'
     this.countdownState = 'NONE'
-    this.countdownText?.setVisible(false)
+    if (this.countdownText) {
+      this.tweens.killTweensOf(this.countdownText)
+      this.countdownText.setText('')
+      this.countdownText.setAlpha(1)
+      this.countdownText.setScale(1)
+      this.countdownText.setVisible(false)
+    }
 
     const totalPlayers = this.runtimeBeys.size
     const maxBuffPlayers = Math.ceil(totalPlayers / 2)
@@ -367,6 +375,7 @@ class GameScene extends Phaser.Scene {
     this.arenaRing?.destroy()
     this.roomLabel?.destroy()
     this.infoLabel?.destroy()
+    this.countdownText?.destroy()
 
     const centerX = width / 2
     const centerY = height / 2

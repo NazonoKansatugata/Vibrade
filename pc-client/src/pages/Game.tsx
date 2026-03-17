@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useGameSocket } from '../hooks/useGameSocket'
 import GameCanvas from '../components/GameCanvas'
 import GameStatus from '../components/GameStatus'
 import { useDemoGameState } from '../hooks/useDemoGameState'
 import type { GameState } from '../types'
 import type { CollisionEventPayload } from '../game/scenes/GameScene'
+import type { GameStartPayload } from '../hooks/useGameSocket'
 import '../styles/game.css'
 
 const ENABLE_DEMO_FALLBACK = import.meta.env.VITE_USE_DEMO_GAMESTATE === 'true'
@@ -14,7 +15,9 @@ const ENABLE_TILT_PANEL = true
 const Game = () => {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const resolvedRoomId = roomId ?? ''
+  const initialGameStart = (location.state as { initialGameStart?: GameStartPayload } | null)?.initialGameStart ?? null
 
   // LAUNCH_BEY 受信フラッシュ表示（2秒間表示）
   const [actionFlash, setActionFlash] = useState<{ playerSocketId: string; power: number } | null>(null)
@@ -34,6 +37,7 @@ const Game = () => {
   const triggerVibrateTargetsRef = useRef(triggerVibrateTargets)
   const demoGameState = useDemoGameState(resolvedRoomId, ENABLE_DEMO_FALLBACK)
   const gameState = sceneGameState ?? (ENABLE_DEMO_FALLBACK ? demoGameState : undefined)
+  const effectiveGameStart = latestGameStart ?? initialGameStart
   const tiltRows = Object.values(latestPlayerInputs)
 
   useEffect(() => {
@@ -49,10 +53,10 @@ const Game = () => {
   }, [])
 
   const handleRetry = useCallback(() => {
-    if (!latestGameStart) return
+    if (!effectiveGameStart) return
     setSceneGameState(undefined)
     setRetrySeed((prev) => prev + 1)
-  }, [latestGameStart])
+  }, [effectiveGameStart])
 
   const handleCollision = useCallback((payload: CollisionEventPayload) => {
     const targetSocketIds = playersRef.current
@@ -73,7 +77,7 @@ const Game = () => {
         <GameStatus
           roomId={resolvedRoomId}
           gameState={gameState}
-          canRetry={Boolean(latestGameStart)}
+          canRetry={Boolean(effectiveGameStart)}
           onRetry={handleRetry}
         />
 
@@ -134,7 +138,7 @@ const Game = () => {
         <GameCanvas
           key={`${resolvedRoomId}-${retrySeed}`}
           roomId={resolvedRoomId}
-          startPayload={latestGameStart}
+          startPayload={effectiveGameStart}
           inputPayload={latestPlayerInput}
           launchPayload={latestLaunchBey}
           onGameStateChange={handleStateChange}
