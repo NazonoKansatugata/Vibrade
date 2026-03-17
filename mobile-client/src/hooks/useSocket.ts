@@ -3,11 +3,6 @@ import { controlSocket } from '../socket/controlSocket';
 import { ServerEvents } from '../socket/events';
 import { isHapticSupported, useHapticFeedback } from './useHapticFeedback';
 
-const isIOSWeb = (): boolean => {
-  if (typeof navigator === 'undefined') return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent);
-};
-
 export type FeedbackFxIntent = 'impact' | 'launch';
 
 export interface GameStateData {
@@ -68,12 +63,10 @@ export const useSocket = (roomId: string, playerName: string, beyType: string) =
     };
 
     const onCollision = () => {
-      // iOSは視覚+音を標準。Androidなどはハプティックも併用。
+      // 全端末で視覚+音を標準化。振動可能端末は追加でハプティック。
       setLastFxIntent('impact');
       setFxPulse((prev) => prev + 1);
-      if (!isIOSWeb()) {
-        triggerFeedback([100, 50, 100], 'impact');
-      }
+      triggerFeedback([100, 50, 100], 'impact');
     };
 
     const onError = () => {
@@ -82,9 +75,7 @@ export const useSocket = (roomId: string, playerName: string, beyType: string) =
     const onVibrate = (data: { pattern?: number[] }) => {
       setLastFxIntent('launch');
       setFxPulse((prev) => prev + 1);
-      if (!isIOSWeb()) {
-        triggerFeedback(data.pattern || [200, 100, 200], 'launch');
-      }
+      triggerFeedback(data.pattern || [200, 100, 200], 'launch');
     };
 
     socket.on('connect', onConnect);
