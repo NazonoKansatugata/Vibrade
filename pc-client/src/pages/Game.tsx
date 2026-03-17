@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useGameSocket } from '../hooks/useGameSocket'
 import GameCanvas from '../components/GameCanvas'
@@ -30,9 +30,19 @@ const Game = () => {
 
   const [sceneGameState, setSceneGameState] = useState<GameState | undefined>(undefined)
   const [retrySeed, setRetrySeed] = useState(0)
+  const playersRef = useRef(players)
+  const triggerVibrateTargetsRef = useRef(triggerVibrateTargets)
   const demoGameState = useDemoGameState(resolvedRoomId, ENABLE_DEMO_FALLBACK)
   const gameState = sceneGameState ?? (ENABLE_DEMO_FALLBACK ? demoGameState : undefined)
   const tiltRows = Object.values(latestPlayerInputs)
+
+  useEffect(() => {
+    playersRef.current = players
+  }, [players])
+
+  useEffect(() => {
+    triggerVibrateTargetsRef.current = triggerVibrateTargets
+  }, [triggerVibrateTargets])
 
   const handleStateChange = useCallback((next: GameState) => {
     setSceneGameState(next)
@@ -45,7 +55,7 @@ const Game = () => {
   }, [latestGameStart])
 
   const handleCollision = useCallback((payload: CollisionEventPayload) => {
-    const targetSocketIds = players
+    const targetSocketIds = playersRef.current
       .filter((player) => payload.playerIds.includes(player.id))
       .map((player) => player.socketId)
 
@@ -54,8 +64,8 @@ const Game = () => {
     }
 
     const pattern = payload.kind === 'wall' ? [90] : [120, 60, 120]
-    triggerVibrateTargets(targetSocketIds, pattern)
-  }, [players, triggerVibrateTargets])
+    triggerVibrateTargetsRef.current(targetSocketIds, pattern)
+  }, [])
 
   return (
     <div className="game-page">
