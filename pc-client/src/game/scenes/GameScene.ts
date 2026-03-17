@@ -17,6 +17,11 @@ const COLLISION_RINGOUT_MAX_TICKS = 14
 const COLLISION_RINGOUT_IMPACT_THRESHOLD = 2.9
 const BASE_DAMAGE = 7
 const IMPACT_MULTIPLIER = 0.45
+const BASE_ENERGY = 100
+const ARMED_TIMEOUT_MS = 3000
+const COUNTDOWN_INTERVAL_MS = 1000
+const PENALTY_MIN_ENERGY_FACTOR = 0.3
+const OTEZUKI_ENERGY_FACTOR = 0.7
 // 1280x720基準の描画サイズ(外円半径約33px)をワールド座標へ合わせる
 const BEY_RADIUS = 72
 const ATTACK_POINT_ORBIT_RADIUS = 54
@@ -39,6 +44,7 @@ interface RuntimeBey {
   ringoutArmedTicks: number
   attackAngle: number
   attackSpinRate: number
+  launchTime?: number
 }
 
 class GameScene extends Phaser.Scene {
@@ -62,6 +68,10 @@ class GameScene extends Phaser.Scene {
   private lastFrameAt = 0
   private isSceneReady = false
   private pendingStartPayload?: GameStartPayload
+  private countdownText?: Phaser.GameObjects.Text
+  private shootStartTime: number = 0
+  private countdownState: '3' | '2' | '1' | 'GO' | 'SHOOT' | 'NONE' = 'NONE'
+  private lastCountdownUpdateAt: number = 0
 
   constructor(roomId: string, onStateChange?: (gameState: GameState) => void) {
     super({ key: 'game-scene' })
@@ -108,6 +118,117 @@ class GameScene extends Phaser.Scene {
       this.simulateTick()
       this.accumulatorMs -= TICK_MS
     }
+
+    if (this.status === 'armed') {
+      this.handleCountdown(time)
+    }
+  }
+
+  private handleCountdown(time: number) {
+    if (this.lastCountdownUpdateAt === 0) {
+      this.lastCountdownUpdateAt = time
+      this.updateCountdownUI('3')
+      return
+    }
+
+    const elapsed = time - this.lastCountdownUpdateAt
+
+    if (this.countdownState === '3' && elapsed >= COUNTDOWN_INTERVAL_MS) {
+      this.updateCountdownUI('2')
+      this.lastCountdownUpdateAt = time
+    } else if (this.countdownState === '2' && elapsed >= COUNTDOWN_INTERVAL_MS) {
+      this.updateCountdownUI('1')
+      this.lastCountdownUpdateAt = time
+    } else if (this.countdownState === '1' && elapsed >= COUNTDOWN_INTERVAL_MS) {
+      this.updateCountdownUI('GO')
+      this.lastCountdownUpdateAt = time
+    } else if (this.countdownState === 'GO' && elapsed >= COUNTDOWN_INTERVAL_MS) {
+      this.updateCountdownUI('SHOOT')
+      this.lastCountdownUpdateAt = time
+      this.shootStartTime = time
+    } else if (this.countdownState === 'SHOOT') {
+      // 全員発射済みか、タイムアウトで開始
+      const allLaunchedOrTimeout = 
+        Array.from(this.runtimeBeys.values()).every(b => b.launchTime !== undefined) || 
+        (time - this.shootStartTime >= ARMED_TIMEOUT_MS)
+
+      if (allLaunchedOrTimeout) {
+        this.finalizeLaunch()
+      }
+    }
+  }
+
+  private updateCountdownUI(state: typeof this.countdownState) {
+    this.countdownState = state
+    if (!this.countdownText) return
+
+    let text = ''
+    let color = '#ffffff'
+    let scale = 1
+
+    switch (state) {
+      case '3': text = '3'; break
+      case '2': text = '2'; break
+      case '1': text = '1'; break
+      case 'GO': text = 'GO!'; color = '#fbbf24'; scale = 1.2; break
+      case 'SHOOT': text = 'SHOOT!!!'; color = '#ef4444'; scale = 1.5; break
+    }
+
+    this.countdownText.setText(text)
+    this.countdownText.setColor(color)
+    this.countdownText.setScale(scale)
+    this.countdownText.setVisible(true)
+
+    // ポップアップアニメーション
+    this.tweens.add({
+      targets: this.countdownText,
+      scale: scale * 1.5,
+      alpha: { from: 1, to: 0.8 },
+      duration: 200,
+      yoyo: true,
+    })
+  }
+
+  private finalizeLaunch() {
+    this.status = 'playing'
+    this.countdownState = 'NONE'
+    this.countdownText?.setVisible(false)
+
+    const totalPlayers = this.runtimeBeys.size
+    const maxBuffPlayers = Math.ceil(totalPlayers / 2)
+    let remainingBuffPool = totalPlayers * 0.25
+
+    // 成功したプレイヤー（指示後かつタイムアウト前）を時間順にソート
+    const successfulPlayers = Array.from(this.runtimeBeys.values())
+      .filter(b => b.launchTime !== undefined && b.launchTime >= this.shootStartTime && (b.launchTime - this.shootStartTime) < ARMED_TIMEOUT_MS)
+      .sort((a, b) => (a.launchTime || 0) - (b.launchTime || 0))
+
+    // 各プレイヤーのエネルギーを確定
+    this.runtimeBeys.forEach((bey) => {
+      const launchDelta = bey.launchTime !== undefined ? bey.launchTime - this.shootStartTime : undefined
+
+      if (launchDelta === undefined || launchDelta >= ARMED_TIMEOUT_MS) {
+        // タイムアウト
+        bey.energy = BASE_ENERGY * PENALTY_MIN_ENERGY_FACTOR
+      } else if (launchDelta < 0) {
+        // お手付き
+        bey.energy = BASE_ENERGY * OTEZUKI_ENERGY_FACTOR
+      } else {
+        // 成功
+        const rank = successfulPlayers.findIndex(p => p.id === bey.id) + 1
+        let energyFactor = 1.0
+
+        if (rank > 0 && rank <= maxBuffPlayers && remainingBuffPool > 0) {
+          const buff = Math.min(0.5, remainingBuffPool)
+          energyFactor += buff
+          remainingBuffPool -= buff
+        }
+        
+        bey.energy = BASE_ENERGY * energyFactor
+      }
+    })
+
+    this.emitAndRenderState()
   }
 
   startSimulation(payload: GameStartPayload) {
@@ -126,9 +247,12 @@ class GameScene extends Phaser.Scene {
     this.tick = 0
     this.accumulatorMs = 0
     this.lastFrameAt = 0
-    this.status = 'playing'
+    this.status = 'armed'
     this.isGameActive = true
     this.winnerId = undefined
+    this.shootStartTime = 0
+    this.countdownState = 'NONE'
+    this.lastCountdownUpdateAt = 0
 
     const count = payload.players.length
     this.arenaRadius = 400 + (Math.max(2, count) - 2) * 50
@@ -150,6 +274,7 @@ class GameScene extends Phaser.Scene {
         ringoutArmedTicks: 0,
         attackAngle: ((index * Math.PI) / 2) % (Math.PI * 2),
         attackSpinRate: 0.18 + (index % 3) * 0.03,
+        launchTime: undefined,
       })
     })
 
@@ -204,6 +329,16 @@ class GameScene extends Phaser.Scene {
 
     // パワーに応じたブースト（最大 BOOST_FORCE）
     const force = BOOST_FORCE * Math.max(0.2, payload.power)
+    
+    if (this.status === 'armed') {
+      // 準備中は何回振っても最後のタイミングが記録される（お手付き上書き可、ただしSHOOT後は確定）
+      if (bey.launchTime === undefined || this.countdownState === 'SHOOT') {
+        const now = this.game.loop.time
+        bey.launchTime = now
+      }
+      return
+    }
+
     bey.vx += dx * force
     bey.vy += dy * force
 
@@ -241,6 +376,16 @@ class GameScene extends Phaser.Scene {
       fontStyle: 'bold',
     })
     this.roomLabel.setOrigin(0.5, 0)
+
+    this.countdownText = this.add.text(centerX, centerY, '', {
+      fontFamily: 'Segoe UI',
+      fontSize: '84px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    })
+    this.countdownText.setOrigin(0.5)
+    this.countdownText.setVisible(false)
+    this.countdownText.setDepth(100)
 
     this.infoLabel = this.add.text(centerX, height - 44, 'Phaser minimal scene: waiting for server gameState', {
       fontFamily: 'Segoe UI',
@@ -291,8 +436,15 @@ class GameScene extends Phaser.Scene {
   private simulateTick() {
     this.tick += 1
 
+    const isArmed = this.status === 'armed'
+
     this.runtimeBeys.forEach((bey, playerId) => {
       if (!bey.isActive) {
+        return
+      }
+
+      if (isArmed) {
+        // armed状態は位置を動かさない
         return
       }
 

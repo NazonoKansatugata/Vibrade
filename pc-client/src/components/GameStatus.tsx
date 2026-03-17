@@ -10,26 +10,25 @@ interface GameStatusProps {
 const GameStatus = ({ roomId, gameState, canRetry = false, onRetry }: GameStatusProps) => {
   const playerCount = gameState?.players.length ?? 0
   const activeBeys = gameState?.beys.filter((b) => b.energy > 0).length ?? 0
-  const isLaunchReady = gameState?.status === 'armed'
 
   return (
     <div className="game-status">
       <p className="game-status__room">Room: <strong>{roomId}</strong></p>
 
       <div className="game-status__state">
-        {gameState?.isGameActive ? (
+        {gameState?.status === 'playing' ? (
           <>
             <span className="game-status__badge game-status__badge--active">
               PLAYING
             </span>
             <p>残り {activeBeys} / {playerCount} 台</p>
           </>
-        ) : isLaunchReady ? (
+        ) : gameState?.status === 'armed' ? (
           <>
-            <span className="game-status__badge game-status__badge--waiting">
+            <span className="game-status__badge game-status__badge--waiting" style={{ background: '#f59e0b' }}>
               READY TO LAUNCH
             </span>
-            <p>スマホを振って発射してください</p>
+            <p>カウントダウン後に発射してください！</p>
           </>
         ) : (
           <>
@@ -46,14 +45,21 @@ const GameStatus = ({ roomId, gameState, canRetry = false, onRetry }: GameStatus
         <ul className="game-status__beys">
           {gameState.beys.map((bey) => {
             const player = gameState.players.find((p) => p.id === bey.playerId)
-            const pct = Math.round((bey.energy / 100) * 100)
+            const currentEnergy = Math.round(bey.energy)
+            const barPct = Math.min(100, Math.round((bey.energy / 100) * 100))
             return (
               <li key={bey.id} className="game-status__bey-row">
-                <span>{player?.name ?? bey.playerId}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '4px' }}>
+                  <span>{player?.name ?? bey.playerId}</span>
+                  <span style={{ fontSize: '12px', opacity: 0.8 }}>{currentEnergy} HP</span>
+                </div>
                 <div className="game-status__energy-bar">
                   <div
                     className="game-status__energy-fill"
-                    style={{ width: `${pct}%` }}
+                    style={{ 
+                      width: `${barPct}%`,
+                      backgroundColor: bey.energy > 100 ? '#10b981' : bey.energy > 30 ? '#3b82f6' : '#ef4444'
+                    }}
                   />
                 </div>
               </li>
