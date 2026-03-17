@@ -16,9 +16,10 @@ const MIN_COLLISION_KNOCKBACK = 1.8
 const WALL_RESTITUTION = 0.78
 const COLLISION_RINGOUT_MIN_TICKS = 6
 const COLLISION_RINGOUT_MAX_TICKS = 14
+const COLLISION_RINGOUT_IMPACT_THRESHOLD = 2.6
 const BASE_DAMAGE = 7
 const IMPACT_MULTIPLIER = 0.45
-const BEY_RADIUS = 30
+const BEY_RADIUS = 33
 const ATTACK_POINT_HIT_DOT = 0.88
 const ATTACK_POINT_DAMAGE_MULTIPLIER = 2.2
 const ATTACK_POINT_KNOCKBACK_MULTIPLIER = 1.75
@@ -413,12 +414,24 @@ class GameScene extends Phaser.Scene {
           b.vx += bonus * ATTACK_POINT_SELF_RECOIL * nx
           b.vy += bonus * ATTACK_POINT_SELF_RECOIL * ny
         }
-        const ringoutArmTicks = Math.min(
-          COLLISION_RINGOUT_MAX_TICKS,
-          Math.max(COLLISION_RINGOUT_MIN_TICKS, Math.round(impact + 4)),
-        )
-        a.ringoutArmedTicks = Math.max(a.ringoutArmedTicks, ringoutArmTicks)
-        b.ringoutArmedTicks = Math.max(b.ringoutArmedTicks, ringoutArmTicks)
+        const aRingoutImpact = impact * (bCriticalHit ? ATTACK_POINT_KNOCKBACK_MULTIPLIER : 1)
+        const bRingoutImpact = impact * (aCriticalHit ? ATTACK_POINT_KNOCKBACK_MULTIPLIER : 1)
+
+        if (aRingoutImpact >= COLLISION_RINGOUT_IMPACT_THRESHOLD) {
+          const ringoutArmTicks = Math.min(
+            COLLISION_RINGOUT_MAX_TICKS,
+            Math.max(COLLISION_RINGOUT_MIN_TICKS, Math.round(aRingoutImpact + 4)),
+          )
+          a.ringoutArmedTicks = Math.max(a.ringoutArmedTicks, ringoutArmTicks)
+        }
+
+        if (bRingoutImpact >= COLLISION_RINGOUT_IMPACT_THRESHOLD) {
+          const ringoutArmTicks = Math.min(
+            COLLISION_RINGOUT_MAX_TICKS,
+            Math.max(COLLISION_RINGOUT_MIN_TICKS, Math.round(bRingoutImpact + 4)),
+          )
+          b.ringoutArmedTicks = Math.max(b.ringoutArmedTicks, ringoutArmTicks)
+        }
 
         const aAdv = a.energy / Math.max(1, b.energy)
         const damageToA =
