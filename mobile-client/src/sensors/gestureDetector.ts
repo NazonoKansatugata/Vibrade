@@ -21,7 +21,7 @@ export class GestureDetector {
   private readonly PULL_THRESHOLD = 10;
   private readonly LAUNCH_THRESHOLD = 15;
   private readonly COOLDOWN_MS = 1000;
-  private readonly MAX_POWER_ACCEL = 25; // shakePowerが1.0になる加速度
+  private readonly MAX_POWER_ACCEL = 30; // shakePowerが1.0になる加速度
 
   detect(accelMagnitude: number, accZ: number): GestureResult {
     const now = Date.now();
