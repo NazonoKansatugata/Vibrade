@@ -437,7 +437,7 @@ class GameScene extends Phaser.Scene {
         const playerName = gameState.players.find(
             (player) => player.id === beyState.playerId,
         )?.name
-        sprite = new BeySprite(this, beyState.id, playerName ?? `P${index + 1}`, this.unitToPixel)
+        sprite = new BeySprite(this, beyState.id, playerName ?? `P${index + 1}`, this.unitToPixel, beyState.beyType || 'balance')
         this.beySprites.set(beyState.id, sprite)
       }
 

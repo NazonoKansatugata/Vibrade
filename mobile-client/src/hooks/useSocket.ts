@@ -15,12 +15,9 @@ export interface GameStateData {
   }>;
 }
 
-interface SocketErrorPayload {
-  code: string;
-  message: string;
-}
 
-export const useSocket = (roomId: string, playerName: string) => {
+
+export const useSocket = (roomId: string, playerName: string, beyType: string) => {
   const [isConnected, setIsConnected] = useState(false);
   const [gameState, setGameState] = useState<GameStateData | null>(null);
   const wasLaunchActiveRef = useRef(false);
@@ -29,7 +26,7 @@ export const useSocket = (roomId: string, playerName: string) => {
   useEffect(() => {
     // 接続と入室
     const socket = controlSocket.connect();
-    controlSocket.joinRoom(roomId, playerName);
+    controlSocket.joinRoom(roomId, playerName, beyType);
 
     const onConnect = () => {
       setIsConnected(true);
@@ -66,7 +63,7 @@ export const useSocket = (roomId: string, playerName: string) => {
       triggerFeedback([100, 50, 100], 'impact');
     };
 
-    const onError = (_err: SocketErrorPayload) => {
+    const onError = () => {
     };
 
     const onVibrate = (data: { pattern?: number[] }) => {
@@ -91,7 +88,7 @@ export const useSocket = (roomId: string, playerName: string) => {
       socket.off(ServerEvents.ERROR, onError);
       controlSocket.disconnect();
     };
-  }, [roomId, playerName, triggerFeedback]);
+  }, [roomId, playerName, beyType, triggerFeedback]);
 
   // Socket経由で入力を送信する関数
   const sendInput = (tiltX: number, tiltY: number, shakePower: number) => {
