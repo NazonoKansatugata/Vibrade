@@ -68,11 +68,8 @@ export const useSensor = (): SensorData => {
       // フィルタリング (重力加速度約9.8を除外するかはジェスチャー側の閾値次第)
       const filteredMag = accelFilter.current.filter(magnitude);
 
-      // Z軸加速度（前後の振り）
-      const accZ = acc.z;
-
       // ジェスチャー判定
-      const gesture = detector.current.detect(filteredMag, accZ);
+      const gesture = detector.current.detect(filteredMag);
 
       // gesture.state / shakePower が古いまま残ると送信条件とUI表示がズレるため、差分がある時は同期する
       setData((prev) => {

@@ -24,7 +24,7 @@ export class GestureDetector {
   private readonly COOLDOWN_MS = 1000;
   private readonly MAX_POWER_ACCEL = 25; // shakePowerが1.0になる加速度
 
-  detect(accelMagnitude: number, _accZ: number): GestureResult {
+  detect(accelMagnitude: number): GestureResult {
     const now = Date.now();
 
     // クールダウン処理
