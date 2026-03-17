@@ -1,11 +1,14 @@
 // ゲーム内で使う共通型
 // shared/types が整備されたらそちらに移行する
 
+export type BeyType = 'power' | 'defense' | 'weight'
+
 export interface Player {
   id: string
   socketId: string
   name: string
   ready: boolean
+  beyType?: BeyType
 }
 
 export interface Bey {
@@ -17,6 +20,7 @@ export interface Bey {
   vy: number
   energy: number
   attackAngle?: number
+  beyType?: BeyType
 }
 
 export interface GameState {
