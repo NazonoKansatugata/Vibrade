@@ -49,11 +49,6 @@ const getHapticCheckbox = (): HTMLInputElement | null => {
   hapticSwitchLabel = label;
   hapticCheckbox = el;
 
-  // touchstart でペンディング中のパルスを消費する（iOS ジェスチャーコンテキスト内で実行）
-  document.addEventListener('touchstart', () => {
-    consumePendingHapticPulses();
-  }, { passive: true });
-
   return el;
 };
 
