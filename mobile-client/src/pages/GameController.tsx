@@ -229,7 +229,7 @@ const GameController = () => {
           </div>
           <button
             className="w-full py-2.5 rounded-xl border border-white/10 bg-white/5 active:bg-white/10 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-300 transition-colors"
-            onClick={() => triggerFeedback([100])}
+            onClick={() => triggerFeedback([100], 'default', true)}
           >
             Test Vibration
           </button>
