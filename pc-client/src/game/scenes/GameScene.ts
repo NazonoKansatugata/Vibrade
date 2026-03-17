@@ -10,21 +10,22 @@ const ENERGY_DECAY = 0.05
 const BASE_ACCEL = 1.5
 const MAX_SPEED = 20
 const COLLISION_RESTITUTION = 0.82
-const COLLISION_KNOCKBACK_BOOST = 1.35
-const MIN_COLLISION_KNOCKBACK = 1.8
-const WALL_RESTITUTION = 0.78
+const COLLISION_KNOCKBACK_BOOST = 1.45
+const MIN_COLLISION_KNOCKBACK = 2.0
+const WALL_RESTITUTION = 0.86
 const COLLISION_RINGOUT_MIN_TICKS = 6
 const COLLISION_RINGOUT_MAX_TICKS = 14
-const COLLISION_RINGOUT_IMPACT_THRESHOLD = 2.6
+const COLLISION_RINGOUT_IMPACT_THRESHOLD = 2.9
 const BASE_DAMAGE = 7
 const IMPACT_MULTIPLIER = 0.45
 // 1280x720基準の描画サイズ(外円半径約33px)をワールド座標へ合わせる
 const BEY_RADIUS = 72
 const ATTACK_POINT_ORBIT_RADIUS = 54
-const ATTACK_POINT_TARGET_PADDING = 12
-const ATTACK_POINT_DAMAGE_MULTIPLIER = 2.2
-const ATTACK_POINT_KNOCKBACK_MULTIPLIER = 1.75
-const ATTACK_POINT_SELF_RECOIL = 0.35
+const ATTACK_POINT_TARGET_PADDING = 34
+const ATTACK_POINT_DAMAGE_MULTIPLIER = 2.35
+const ATTACK_POINT_KNOCKBACK_MULTIPLIER = 1.9
+const ATTACK_POINT_SELF_RECOIL = 0.3
+const ARENA_RENDER_RADIUS_SCALE = 0.34
 
 interface RuntimeBey {
   id: string
@@ -167,7 +168,7 @@ class GameScene extends Phaser.Scene {
 
     const centerX = width / 2
     const centerY = height / 2
-    const radius = Math.min(width, height) * 0.34
+    const radius = Math.min(width, height) * ARENA_RENDER_RADIUS_SCALE
 
     this.add.rectangle(centerX, centerY, width, height, 0x0b1120, 1)
 
@@ -512,13 +513,13 @@ class GameScene extends Phaser.Scene {
 
   private projectX(x: number) {
     const centerX = this.scale.width / 2
-    const arenaPixelRadius = Math.min(this.scale.width, this.scale.height) * 0.34 * 0.9
+    const arenaPixelRadius = Math.min(this.scale.width, this.scale.height) * ARENA_RENDER_RADIUS_SCALE
     return centerX + (x / SERVER_ARENA_RADIUS) * arenaPixelRadius
   }
 
   private projectY(y: number) {
     const centerY = this.scale.height / 2
-    const arenaPixelRadius = Math.min(this.scale.width, this.scale.height) * 0.34 * 0.9
+    const arenaPixelRadius = Math.min(this.scale.width, this.scale.height) * ARENA_RENDER_RADIUS_SCALE
     return centerY + (y / SERVER_ARENA_RADIUS) * arenaPixelRadius
   }
 }
