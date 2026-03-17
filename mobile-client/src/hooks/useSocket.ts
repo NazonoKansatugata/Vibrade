@@ -3,14 +3,6 @@ import { controlSocket } from '../socket/controlSocket';
 import { ServerEvents } from '../socket/events';
 import { isHapticSupported, useHapticFeedback } from './useHapticFeedback';
 
-const ENABLE_SOCKET_TIMELINE = true;
-
-export interface SocketDebugEvent {
-  at: string;
-  event: string;
-  detail?: string;
-}
-
 export interface GameStateData {
   roomId: string;
   status: 'waiting' | 'armed' | 'playing' | 'ended';
@@ -23,59 +15,33 @@ export interface GameStateData {
   }>;
 }
 
-interface SocketErrorPayload {
-  code: string;
-  message: string;
-}
 
-export const useSocket = (roomId: string, playerName: string) => {
+
+export const useSocket = (roomId: string, playerName: string, beyType: string) => {
   const [isConnected, setIsConnected] = useState(false);
   const [gameState, setGameState] = useState<GameStateData | null>(null);
-  const [debugEvents, setDebugEvents] = useState<SocketDebugEvent[]>([]);
-  const lastInputLogAt = useRef(0);
-  const lastLaunchLogAt = useRef(0);
   const wasLaunchActiveRef = useRef(false);
   const { triggerFeedback } = useHapticFeedback();
-
-  const appendDebugEvent = (event: string, detail?: string) => {
-    if (!ENABLE_SOCKET_TIMELINE) {
-      return;
-    }
-
-    const entry: SocketDebugEvent = {
-      at: new Date().toLocaleTimeString('ja-JP', { hour12: false }),
-      event,
-      detail,
-    };
-    setDebugEvents((prev) => [entry, ...prev].slice(0, 50));
-  };
 
   useEffect(() => {
     // 接続と入室
     const socket = controlSocket.connect();
-    controlSocket.joinRoom(roomId, playerName);
-    const joinLogTimer = window.setTimeout(() => {
-      appendDebugEvent('emit:joinRoom', `roomId=${roomId} player=${playerName}`);
-    }, 0);
+    controlSocket.joinRoom(roomId, playerName, beyType);
 
     const onConnect = () => {
       setIsConnected(true);
-      appendDebugEvent('connect');
     };
     const onDisconnect = () => {
       setIsConnected(false);
-      appendDebugEvent('disconnect');
     };
     
     // ゲーム状態の受信
     const onGameState = (state: GameStateData) => {
       setGameState(state);
-      appendDebugEvent(ServerEvents.GAME_STATE, `tick=${state.tick} status=${state.status} active=${state.isGameActive}`);
     };
 
     // GAME_START が GAME_STATE より先に来ても開始状態にできるようにする
     const onGameStarted = () => {
-      appendDebugEvent(ServerEvents.GAME_START);
       setGameState((prev) => {
         if (prev) {
           return { ...prev, status: 'playing', isGameActive: true };
@@ -93,17 +59,14 @@ export const useSocket = (roomId: string, playerName: string) => {
     };
 
     const onCollision = () => {
-      appendDebugEvent(ServerEvents.COLLISION);
       // 衝突時のフィードバック
       triggerFeedback([100, 50, 100], 'impact');
     };
 
-    const onError = (err: SocketErrorPayload) => {
-      appendDebugEvent(ServerEvents.ERROR, `${err.code}: ${err.message}`);
+    const onError = () => {
     };
 
     const onVibrate = (data: { pattern?: number[] }) => {
-      appendDebugEvent(ServerEvents.VIBRATE);
       triggerFeedback(data.pattern || [200, 100, 200], 'launch');
     };
 
@@ -116,7 +79,6 @@ export const useSocket = (roomId: string, playerName: string) => {
     socket.on(ServerEvents.ERROR, onError);
 
     return () => {
-      window.clearTimeout(joinLogTimer);
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off(ServerEvents.GAME_STATE, onGameState);
@@ -126,25 +88,14 @@ export const useSocket = (roomId: string, playerName: string) => {
       socket.off(ServerEvents.ERROR, onError);
       controlSocket.disconnect();
     };
-  }, [roomId, playerName, triggerFeedback]);
+  }, [roomId, playerName, beyType, triggerFeedback]);
 
   // Socket経由で入力を送信する関数
   const sendInput = (tiltX: number, tiltY: number, shakePower: number) => {
-    const now = Date.now();
     const isLaunchActive = shakePower > 0;
     const launchPower = isLaunchActive && !wasLaunchActiveRef.current ? shakePower : 0;
 
     wasLaunchActiveRef.current = isLaunchActive;
-
-    if (now - lastInputLogAt.current >= 500) {
-      appendDebugEvent('emit:controlInput', `tilt=(${tiltX.toFixed(2)}, ${tiltY.toFixed(2)})`);
-      lastInputLogAt.current = now;
-    }
-
-    if (launchPower > 0 && now - lastLaunchLogAt.current >= 250) {
-      appendDebugEvent('emit:launchBey', `power=${launchPower.toFixed(2)}`);
-      lastLaunchLogAt.current = now;
-    }
 
     controlSocket.sendInput(tiltX, tiltY, launchPower);
   };
@@ -152,7 +103,6 @@ export const useSocket = (roomId: string, playerName: string) => {
   return {
     isConnected,
     gameState,
-    debugEvents: ENABLE_SOCKET_TIMELINE ? debugEvents : [],
     sendInput,
     isVibrationSupported: isHapticSupported()
   };

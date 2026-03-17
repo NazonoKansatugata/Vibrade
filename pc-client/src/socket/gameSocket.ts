@@ -35,9 +35,9 @@ class GameSocket {
     this.socket.emit(ClientEvents.START_GAME, { roomId });
   }
 
-  triggerVibrate(roomId: string) {
+  triggerVibrate(roomId: string, targetSocketIds?: string[], pattern?: number[]) {
     if (!this.socket || !this.socket.connected) return;
-    this.socket.emit(ClientEvents.TRIGGER_VIBRATE, { roomId });
+    this.socket.emit(ClientEvents.TRIGGER_VIBRATE, { roomId, targetSocketIds, pattern });
   }
 
   on(event: string, callback: (...args: unknown[]) => void) {

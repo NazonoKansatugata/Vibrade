@@ -5,6 +5,7 @@ import GameCanvas from '../components/GameCanvas'
 import GameStatus from '../components/GameStatus'
 import { useDemoGameState } from '../hooks/useDemoGameState'
 import type { GameState } from '../types'
+import type { CollisionEventPayload } from '../game/scenes/GameScene'
 import '../styles/game.css'
 
 const ENABLE_DEMO_FALLBACK = import.meta.env.VITE_USE_DEMO_GAMESTATE === 'true'
@@ -19,7 +20,7 @@ const Game = () => {
   const [actionFlash, setActionFlash] = useState<{ playerSocketId: string; power: number } | null>(null)
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const { latestGameStart, latestPlayerInput, latestPlayerInputs, players, triggerVibrate, latestLaunchBey } = useGameSocket(resolvedRoomId, {
+  const { latestGameStart, latestPlayerInput, latestPlayerInputs, players, triggerVibrate, triggerVibrateTargets, latestLaunchBey } = useGameSocket(resolvedRoomId, {
     onLaunch: (payload) => {
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
       setActionFlash({ playerSocketId: payload.playerSocketId, power: payload.power })
@@ -42,6 +43,19 @@ const Game = () => {
     setSceneGameState(undefined)
     setRetrySeed((prev) => prev + 1)
   }, [latestGameStart])
+
+  const handleCollision = useCallback((payload: CollisionEventPayload) => {
+    const targetSocketIds = players
+      .filter((player) => payload.playerIds.includes(player.id))
+      .map((player) => player.socketId)
+
+    if (targetSocketIds.length === 0) {
+      return
+    }
+
+    const pattern = payload.kind === 'wall' ? [90] : [120, 60, 120]
+    triggerVibrateTargets(targetSocketIds, pattern)
+  }, [players, triggerVibrateTargets])
 
   return (
     <div className="game-page">
@@ -114,6 +128,7 @@ const Game = () => {
           inputPayload={latestPlayerInput}
           launchPayload={latestLaunchBey}
           onGameStateChange={handleStateChange}
+          onCollision={handleCollision}
           retrySeed={retrySeed}
         />
       </main>

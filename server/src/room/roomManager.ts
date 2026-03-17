@@ -6,7 +6,7 @@ export interface Player {
   socketId: string;
   name: string;
   ready: boolean;
-  // beyId: string;
+  beyType: 'balance' | 'power' | 'defense' | 'weight';
 }
 
 export interface Room {
@@ -54,7 +54,7 @@ class RoomManager {
     return this.rooms[roomId];
   }
 
-  addPlayer(roomId: string, socketId: string, playerName: string): { room: Room, player: Player } | null {
+  addPlayer(roomId: string, socketId: string, playerName: string, beyType: string): { room: Room, player: Player } | null {
     const room = this.rooms[roomId];
     if (!room) return null;
     
@@ -65,7 +65,8 @@ class RoomManager {
       id: uuidv4(),
       socketId,
       name: playerName || 'Guest',
-      ready: false
+      ready: false,
+      beyType: (beyType as any) || 'balance'
     };
 
     room.players.push(player);
