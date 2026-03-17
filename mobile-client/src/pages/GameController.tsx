@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useLocation, Navigate } from 'react-router-dom'
 import { useSensor } from '../hooks/useSensor'
 import { useSocket } from '../hooks/useSocket'
@@ -11,14 +11,13 @@ const GameController = () => {
   const { roomId, playerName, beyType } = location.state || {}
 
   const sensorData = useSensor()
-  const { isConnected, gameState, sendInput, isVibrationSupported, lastVibrateAt } = useSocket(
+  const { isConnected, gameState, sendInput, isVibrationSupported, vibrateCount } = useSocket(
     roomId || '',
     playerName || '',
     beyType || 'balance'
   )
   const { triggerFeedback, isSupported: isHapticOrSoundSupported } = useHapticFeedback()
   const hapticMode = getHapticMode()
-  const [vibrateCount, setVibrateCount] = useState(0)
   const latestSensorRef = useRef({ tiltX: 0, tiltY: 0, shakePower: 0 })
   const sendInputRef = useRef(sendInput)
 
@@ -43,11 +42,6 @@ const GameController = () => {
     }, 33)
     return () => clearInterval(interval)
   }, [isConnected])
-
-  useEffect(() => {
-    if (lastVibrateAt === null) return
-    setVibrateCount((c) => c + 1)
-  }, [lastVibrateAt])
 
   if (!roomId || !playerName) {
     return <Navigate to="/join" replace />

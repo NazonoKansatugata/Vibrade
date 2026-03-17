@@ -20,7 +20,7 @@ export interface GameStateData {
 export const useSocket = (roomId: string, playerName: string, beyType: string) => {
   const [isConnected, setIsConnected] = useState(false);
   const [gameState, setGameState] = useState<GameStateData | null>(null);
-  const [lastVibrateAt, setLastVibrateAt] = useState<number | null>(null);
+  const [vibrateCount, setVibrateCount] = useState(0);
   const wasLaunchActiveRef = useRef(false);
   const { triggerFeedback } = useHapticFeedback();
 
@@ -68,7 +68,7 @@ export const useSocket = (roomId: string, playerName: string, beyType: string) =
     };
 
     const onVibrate = (data: { pattern?: number[] }) => {
-      setLastVibrateAt(Date.now());
+      setVibrateCount((prev) => prev + 1);
       triggerFeedback(data.pattern || [200, 100, 200], 'launch');
     };
 
@@ -107,6 +107,6 @@ export const useSocket = (roomId: string, playerName: string, beyType: string) =
     gameState,
     sendInput,
     isVibrationSupported: isHapticSupported(),
-    lastVibrateAt,
+    vibrateCount,
   };
 };
