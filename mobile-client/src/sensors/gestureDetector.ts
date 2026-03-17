@@ -16,22 +16,24 @@ export interface GestureResult {
 export class GestureDetector {
   private state: GestureState = GestureState.IDLE;
   private lastLaunchTime: number = 0;
+  private cooldownLaunchPower: number = 0;
   
   // しきい値設定
-  private readonly PULL_THRESHOLD = 10;
-  private readonly LAUNCH_THRESHOLD = 15;
+  private readonly PULL_THRESHOLD = 14;
+  private readonly LAUNCH_THRESHOLD = 20;
   private readonly COOLDOWN_MS = 1000;
-  private readonly MAX_POWER_ACCEL = 30; // shakePowerが1.0になる加速度
+  private readonly MAX_POWER_ACCEL = 25; // shakePowerが1.0になる加速度
 
-  detect(accelMagnitude: number, accZ: number): GestureResult {
+  detect(accelMagnitude: number): GestureResult {
     const now = Date.now();
 
     // クールダウン処理
     if (this.state === GestureState.COOLDOWN) {
       if (now - this.lastLaunchTime > this.COOLDOWN_MS) {
         this.state = GestureState.IDLE;
+        this.cooldownLaunchPower = 0;
       }
-      return this.getResult(0, false);
+      return this.getResult(this.cooldownLaunchPower, false);
     }
 
     // アイドル状態：大きく振りかぶったか？
@@ -43,15 +45,16 @@ export class GestureDetector {
 
     // 準備（振りかぶり）状態：ピーク（発射）に達したか？
     if (this.state === GestureState.PULLING) {
-      // 誤動作防止：Z方向への振り（前方向への振り）かをチェック
-      // 端末の向きによってZ軸の正負が変わる可能性があるが、企画書ベースでは accZ > 0 を前方向と想定
-      if (accelMagnitude > this.LAUNCH_THRESHOLD && accZ > 0) {
+      // RELOADに入るような強い加速度を検知したら発射成立とする
+      // 端末向き差で取りこぼさないよう、Z軸の正負条件は使わない
+      if (accelMagnitude > this.LAUNCH_THRESHOLD) {
         this.state = GestureState.COOLDOWN;
         this.lastLaunchTime = now;
         
         // Power計算 (0.0 ~ 1.0)
         let power = accelMagnitude / this.MAX_POWER_ACCEL;
         power = Math.max(0, Math.min(power, 1));
+        this.cooldownLaunchPower = power;
         
         return this.getResult(power, true);
       } else if (accelMagnitude < this.PULL_THRESHOLD - 2) {
