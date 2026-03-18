@@ -8,12 +8,21 @@ export function registerSocketHandlers(io: Server) {
 
     // --- PC Client Events ---
     socket.on(ClientEvents.CREATE_ROOM, () => {
+      const staleRoomIds = roomManager.removeRoomsByHostId(socket.id);
+      staleRoomIds.forEach((staleRoomId) => {
+        io.to(staleRoomId).emit(ServerEvents.ERROR, {
+          code: 'ROOM_REPLACED',
+          message: 'The host created a new room. This room has been closed.'
+        });
+        io.socketsLeave(staleRoomId);
+      });
+
       // 1. Host creates a new room
       const room = roomManager.createRoom(socket.id);
       socket.join(room.roomId);
 
       console.log(`[Room Created] Room ID: ${room.roomId} by Host: ${socket.id}`);
-      
+
       // Notify host of the new room ID
       socket.emit(ServerEvents.ROOM_CREATED, { roomId: room.roomId });
     });
@@ -23,6 +32,8 @@ export function registerSocketHandlers(io: Server) {
       const room = roomManager.getRoom(roomId);
 
       if (room && room.hostSocketId === socket.id) {
+        // Mark room as game active for reconnecting players
+        room.isGameActive = true;
         // PC-side authoritative physics: server only coordinates room lifecycle and input relay.
         io.to(roomId).emit(ServerEvents.GAME_START, {
           roomId,
@@ -49,7 +60,22 @@ export function registerSocketHandlers(io: Server) {
 
       // Join the actual Socket.io room channel
       socket.join(roomId);
-      console.log(`[Player Joined] ${playerName} (ID: ${socket.id}) joined Room: ${roomId}`);
+      const isReconnect = !!playerId;
+      console.log(`[Player Joined] ${playerName} (ID: ${socket.id}) ${isReconnect ? 'reconnected to' : 'joined'} Room: ${roomId}`);
+
+      // Notify the mobile client of initial game state
+      // If game is already active, report playing state; otherwise, waiting
+      const isGameActive = result.room.isGameActive || false;
+      socket.emit(ServerEvents.GAME_STATE, {
+        roomId,
+        status: isGameActive ? 'playing' : 'waiting',
+        isGameActive,
+        tick: 0,
+        winnerId: null,
+        beys: {}
+      });
+      
+      console.log(`[Player Sync] Room: ${roomId} Game State: ${isGameActive ? 'playing' : 'waiting'}`);
 
       // Broadcast updated player list to the entire room
       io.to(roomId).emit(ServerEvents.PLAYER_LIST, { 
@@ -130,14 +156,39 @@ export function registerSocketHandlers(io: Server) {
       });
     });
 
+    socket.on(ClientEvents.END_ROOM, ({ roomId }: { roomId: string }) => {
+      const room = roomManager.getRoom(roomId);
+      if (!room) {
+        return;
+      }
+
+      if (room.hostSocketId !== socket.id) {
+        socket.emit(ServerEvents.ERROR, { code: 'UNAUTHORIZED', message: 'Only host can end room.' });
+        return;
+      }
+
+      roomManager.removeRoom(roomId);
+      io.to(roomId).emit(ServerEvents.ERROR, {
+        code: 'ROOM_ENDED',
+        message: 'The host ended the room.'
+      });
+      io.socketsLeave(roomId);
+      console.log(`[Room Ended] Room ID: ${roomId} by Host: ${socket.id}`);
+    });
+
     // --- Disconnect Handling ---
     socket.on(ClientEvents.DISCONNECT, () => {
-      // Case 1: Was it a Host? If host disconnects, destroy room
-      const destroyedRoomId = roomManager.removeRoomByHostId(socket.id);
-      if (destroyedRoomId) {
-        console.log(`[Room Destroyed] Host disconnected. Room ID: ${destroyedRoomId}`);
-        io.to(destroyedRoomId).emit(ServerEvents.ERROR, { code: 'HOST_DISCONNECTED', message: 'The host has left the game.' });
-        io.socketsLeave(destroyedRoomId); // force everyone out of the socket.io room
+      // Case 1: Was it a Host? If host disconnects, destroy all host-owned rooms
+      const destroyedRoomIds = roomManager.removeRoomsByHostId(socket.id);
+      if (destroyedRoomIds.length > 0) {
+        destroyedRoomIds.forEach((destroyedRoomId) => {
+          console.log(`[Room Destroyed] Host disconnected. Room ID: ${destroyedRoomId}`);
+          io.to(destroyedRoomId).emit(ServerEvents.ERROR, {
+            code: 'HOST_DISCONNECTED',
+            message: 'The host has left the game.'
+          });
+          io.socketsLeave(destroyedRoomId); // force everyone out of the socket.io room
+        });
         return;
       }
 
@@ -149,7 +200,7 @@ export function registerSocketHandlers(io: Server) {
           players: remainingPlayers
         });
       });
-      
+
       const context = roomManager.getPlayerContextBySocketId(socket.id);
       if (context) {
         // Even if we don't remove them yet, we broadcast updated list to show "offline" status if needed
@@ -160,7 +211,7 @@ export function registerSocketHandlers(io: Server) {
           players: context.room.players
         });
       }
-      
+
       console.log(`[Socket Disconnected] ID: ${socket.id}`);
     });
   });
