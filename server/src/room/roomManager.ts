@@ -15,6 +15,7 @@ export interface Room {
   hostSocketId: string;
   players: Player[];
   createdAt: number;
+  isGameActive?: boolean;
 }
 
 class RoomManager {
@@ -55,7 +56,8 @@ class RoomManager {
       roomId,
       hostSocketId,
       players: [],
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      isGameActive: false
     };
     
     this.rooms[roomId] = room;

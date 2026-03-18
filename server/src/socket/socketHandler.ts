@@ -32,6 +32,8 @@ export function registerSocketHandlers(io: Server) {
       const room = roomManager.getRoom(roomId);
 
       if (room && room.hostSocketId === socket.id) {
+        // Mark room as game active for reconnecting players
+        room.isGameActive = true;
         // PC-side authoritative physics: server only coordinates room lifecycle and input relay.
         io.to(roomId).emit(ServerEvents.GAME_START, {
           roomId,
@@ -58,7 +60,22 @@ export function registerSocketHandlers(io: Server) {
 
       // Join the actual Socket.io room channel
       socket.join(roomId);
-      console.log(`[Player Joined] ${playerName} (ID: ${socket.id}) joined Room: ${roomId}`);
+      const isReconnect = !!playerId;
+      console.log(`[Player Joined] ${playerName} (ID: ${socket.id}) ${isReconnect ? 'reconnected to' : 'joined'} Room: ${roomId}`);
+
+      // Notify the mobile client of initial game state
+      // If game is already active, report playing state; otherwise, waiting
+      const isGameActive = result.room.isGameActive || false;
+      socket.emit(ServerEvents.GAME_STATE, {
+        roomId,
+        status: isGameActive ? 'playing' : 'waiting',
+        isGameActive,
+        tick: 0,
+        winnerId: null,
+        beys: {}
+      });
+      
+      console.log(`[Player Sync] Room: ${roomId} Game State: ${isGameActive ? 'playing' : 'waiting'}`);
 
       // Broadcast updated player list to the entire room
       io.to(roomId).emit(ServerEvents.PLAYER_LIST, { 
