@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, Navigate } from 'react-router-dom'
 import { useSensor } from '../hooks/useSensor'
 import { useSocket } from '../hooks/useSocket'
@@ -20,6 +20,7 @@ const GameController = () => {
   const hapticMode = getHapticMode()
   const latestSensorRef = useRef({ tiltX: 0, tiltY: 0, shakePower: 0 })
   const sendInputRef = useRef(sendInput)
+  const [isInteractionPrimed, setIsInteractionPrimed] = useState(false)
 
   useEffect(() => {
     latestSensorRef.current = {
@@ -42,10 +43,6 @@ const GameController = () => {
     }, 33)
     return () => clearInterval(interval)
   }, [isConnected])
-
-  if (!roomId || !playerName) {
-    return <Navigate to="/join" replace />
-  }
 
   // ジェスチャー状態に合わせたスタイル
   const gestureConfig = {
@@ -93,8 +90,33 @@ const GameController = () => {
   const powerPct = Math.round(sensorData.shakePower * 100)
   const isLaunchReady = gameState?.status === 'armed'
 
+  const handlePrimeInteraction = useCallback(() => {
+    if (isInteractionPrimed) return
+    setIsInteractionPrimed(true)
+    // 最初のユーザー操作を明確に発生させる（音/触覚解放のきっかけ）
+    triggerFeedback([40], 'light', true)
+  }, [isInteractionPrimed, triggerFeedback])
+
+  if (!roomId || !playerName) {
+    return <Navigate to="/join" replace />
+  }
+
   return (
-    <div className="flex flex-col min-h-screen bg-[#0a0a12] text-white select-none touch-none overflow-hidden">
+    <div
+      className="flex flex-col min-h-screen bg-[#0a0a12] text-white select-none touch-none overflow-hidden"
+      onTouchStart={handlePrimeInteraction}
+      onPointerDown={handlePrimeInteraction}
+    >
+      {!isInteractionPrimed && (
+        <div className="fixed inset-0 z-30 bg-black/55 backdrop-blur-[2px] flex items-end justify-center pb-24 px-6">
+          <div className="w-full max-w-sm rounded-2xl border border-cyan-300/25 bg-slate-900/90 p-4 text-center shadow-[0_8px_30px_rgba(0,0,0,0.45)] animate-pulse">
+            <p className="text-[10px] text-cyan-300/70 tracking-[0.2em] uppercase mb-2">Sound Ready</p>
+            <p className="text-sm font-bold text-cyan-100">画面のどこかを1回タップして準備完了</p>
+            <p className="text-[11px] text-slate-300/80 mt-2">そのままゲーム操作でOKです</p>
+          </div>
+        </div>
+      )}
+
       {/* Ambient background */}
       <div className="fixed inset-0 pointer-events-none">
         <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full blur-[120px] transition-all duration-500 ${
