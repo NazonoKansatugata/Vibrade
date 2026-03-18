@@ -186,22 +186,9 @@ const GameController = () => {
     <div
       className="flex flex-col min-h-screen bg-[#0a0a12] text-white select-none touch-none overflow-hidden"
       onTouchStart={handlePrimeInteraction}
+      onTouchEnd={handlePrimeInteraction}
       onPointerDown={handlePrimeInteraction}
     >
-      {!isInteractionPrimed && (
-        <div
-          className="fixed inset-0 z-30 bg-black/55 backdrop-blur-[2px] flex items-end justify-center pb-24 px-6"
-          onTouchStart={handlePrimeInteraction}
-          onPointerDown={handlePrimeInteraction}
-        >
-          <div className="w-full max-w-sm rounded-2xl border border-cyan-300/25 bg-slate-900/90 p-4 text-center shadow-[0_8px_30px_rgba(0,0,0,0.45)] animate-pulse">
-            <p className="text-[10px] text-cyan-300/70 tracking-[0.2em] uppercase mb-2">Sound Ready</p>
-            <p className="text-sm font-bold text-cyan-100">画面のどこかを1回タップして準備完了</p>
-            <p className="text-[11px] text-slate-300/80 mt-2">そのままゲーム操作でOKです</p>
-          </div>
-        </div>
-      )}
-
       {fxPulse > 0 && (
         <div
           key={fxPulse}
@@ -281,13 +268,19 @@ const GameController = () => {
             <p className="text-xs text-violet-400 font-bold tracking-widest uppercase">Game Over</p>
           )}
         </div>
+        {!isInteractionPrimed && (
+          <div className="mt-2 rounded-xl border border-cyan-300/20 bg-cyan-400/10 px-3 py-2 text-center animate-pulse">
+            <p className="text-[10px] font-bold tracking-[0.16em] uppercase text-cyan-200">Tap Once To Enable Sound</p>
+            <p className="text-[11px] text-cyan-100/85 mt-0.5">傾き操作の前に、画面を軽く1回タップ</p>
+          </div>
+        )}
       </div>
 
       {/* ── Main Area ── */}
       <div className="flex-1 flex flex-col items-center justify-center gap-8 px-6 py-6 z-10">
 
         {/* Tilt Joystick */}
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-3" onTouchStart={handlePrimeInteraction} onPointerDown={handlePrimeInteraction}>
           <div className="relative w-44 h-44 rounded-full bg-black/50 border border-white/10 shadow-inner flex items-center justify-center">
             {/* Grid lines */}
             <div className="absolute w-full h-[1px] bg-white/5" />

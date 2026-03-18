@@ -64,7 +64,7 @@ interface TypeTuning {
 const TYPE_TUNING: Record<BeyTypeKey, TypeTuning> = {
   balance: {
     launchForceMultiplier: 1,
-    controlAssistMultiplier: 1,
+    controlAssistMultiplier: 1.1,
     maxEnergyMultiplier: 1,
     energyDecayMultiplier: 1,
     damageDealtMultiplier: 1,
@@ -78,7 +78,7 @@ const TYPE_TUNING: Record<BeyTypeKey, TypeTuning> = {
   },
   power: {
     launchForceMultiplier: 1.12,
-    controlAssistMultiplier: 0.95,
+    controlAssistMultiplier: 1.2,
     maxEnergyMultiplier: 0.95,
     energyDecayMultiplier: 1.1,
     damageDealtMultiplier: 1,
@@ -106,7 +106,7 @@ const TYPE_TUNING: Record<BeyTypeKey, TypeTuning> = {
   },
   weight: {
     launchForceMultiplier: 0.88,
-    controlAssistMultiplier: 0.86,
+    controlAssistMultiplier: 1.5,
     maxEnergyMultiplier: 1.2,
     energyDecayMultiplier: 0.78,
     damageDealtMultiplier: 0.88,
