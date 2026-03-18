@@ -35,6 +35,82 @@ const ATTACK_POINT_KNOCKBACK_MULTIPLIER = 1.9
 const ATTACK_POINT_SELF_RECOIL = 0.3
 const ARENA_RENDER_RADIUS_SCALE = 0.34
 
+type BeyTypeKey = NonNullable<GameState['players'][number]['beyType']>
+
+interface TypeTuning {
+  launchForceMultiplier: number
+  controlAssistMultiplier: number
+  maxEnergyMultiplier: number
+  energyDecayMultiplier: number
+  damageDealtMultiplier: number
+  damageTakenMultiplier: number
+  knockbackPowerMultiplier: number
+  knockbackResistMultiplier: number
+  ringoutRiskGainMultiplier: number
+  ringoutRiskDecayMultiplier: number
+  wallRingoutThresholdMultiplier: number
+  wallRiskRecoveryBonus: number
+}
+
+const TYPE_TUNING: Record<BeyTypeKey, TypeTuning> = {
+  balance: {
+    launchForceMultiplier: 1,
+    controlAssistMultiplier: 1,
+    maxEnergyMultiplier: 1,
+    energyDecayMultiplier: 1,
+    damageDealtMultiplier: 1,
+    damageTakenMultiplier: 1,
+    knockbackPowerMultiplier: 1,
+    knockbackResistMultiplier: 1,
+    ringoutRiskGainMultiplier: 1,
+    ringoutRiskDecayMultiplier: 1,
+    wallRingoutThresholdMultiplier: 1,
+    wallRiskRecoveryBonus: 1,
+  },
+  power: {
+    launchForceMultiplier: 1.12,
+    controlAssistMultiplier: 0.95,
+    maxEnergyMultiplier: 0.95,
+    energyDecayMultiplier: 1.1,
+    damageDealtMultiplier: 1.22,
+    damageTakenMultiplier: 1.06,
+    knockbackPowerMultiplier: 1.15,
+    knockbackResistMultiplier: 0.92,
+    ringoutRiskGainMultiplier: 1.18,
+    ringoutRiskDecayMultiplier: 0.9,
+    wallRingoutThresholdMultiplier: 0.96,
+    wallRiskRecoveryBonus: 0.9,
+  },
+  defense: {
+    launchForceMultiplier: 0.9,
+    controlAssistMultiplier: 0.92,
+    maxEnergyMultiplier: 1.06,
+    energyDecayMultiplier: 0.96,
+    damageDealtMultiplier: 0.9,
+    damageTakenMultiplier: 0.82,
+    knockbackPowerMultiplier: 0.92,
+    knockbackResistMultiplier: 1.3,
+    ringoutRiskGainMultiplier: 0.75,
+    ringoutRiskDecayMultiplier: 1.18,
+    wallRingoutThresholdMultiplier: 1.14,
+    wallRiskRecoveryBonus: 1.2,
+  },
+  weight: {
+    launchForceMultiplier: 0.88,
+    controlAssistMultiplier: 0.86,
+    maxEnergyMultiplier: 1.2,
+    energyDecayMultiplier: 0.78,
+    damageDealtMultiplier: 0.88,
+    damageTakenMultiplier: 0.93,
+    knockbackPowerMultiplier: 0.9,
+    knockbackResistMultiplier: 1.08,
+    ringoutRiskGainMultiplier: 0.82,
+    ringoutRiskDecayMultiplier: 1.25,
+    wallRingoutThresholdMultiplier: 1.08,
+    wallRiskRecoveryBonus: 1.1,
+  },
+}
+
 export interface CollisionEventPayload {
   playerIds: string[]
   kind: 'bey' | 'wall'
@@ -362,8 +438,9 @@ class GameScene extends Phaser.Scene {
           energyFactor += buff
           remainingBuffPool -= buff
         }
-        
-        const baseEnergy = bey.beyType === 'weight' ? BASE_ENERGY * 1.2 : BASE_ENERGY
+
+        const typeTuning = this.getTypeTuning(bey.beyType)
+        const baseEnergy = BASE_ENERGY * typeTuning.maxEnergyMultiplier
         bey.energy = baseEnergy * energyFactor
       }
     })
@@ -416,7 +493,7 @@ class GameScene extends Phaser.Scene {
         attackAngle: ((index * Math.PI) / 2) % (Math.PI * 2),
         attackSpinRate: 0.18 + (index % 3) * 0.03,
         launchTime: undefined,
-        beyType: player.beyType ?? 'power',
+        beyType: player.beyType ?? 'balance',
       })
     })
 
@@ -471,7 +548,8 @@ class GameScene extends Phaser.Scene {
 
     // パワーに応じたブースト（最大 BOOST_FORCE）
     const normalizedPower = Phaser.Math.Clamp(payload.power, 0, 1)
-    const force = BOOST_FORCE * (0.45 + normalizedPower * 1.55)
+    const typeTuning = this.getTypeTuning(bey.beyType)
+    const force = BOOST_FORCE * (0.45 + normalizedPower * 1.55) * typeTuning.launchForceMultiplier
     
     if (this.status === 'armed') {
       // 準備中は何回振っても最後のタイミングが記録される（お手付き上書き可、ただしSHOOT後は確定）
@@ -581,12 +659,13 @@ class GameScene extends Phaser.Scene {
       const input = this.latestInputs.get(playerId)
       const tiltX = input?.tiltX ?? 0
       const tiltY = input?.tiltY ?? 0
+      const typeTuning = this.getTypeTuning(bey.beyType)
 
       const speedBeforeInput = Math.sqrt(bey.vx * bey.vx + bey.vy * bey.vy)
       const controlFactor = Math.max(0.3, 1 - bey.energy / 200)
       const steeringAssist = Math.min(1, speedBeforeInput / 10)
-      bey.vx += tiltX * BASE_ACCEL * controlFactor * steeringAssist
-      bey.vy += tiltY * BASE_ACCEL * controlFactor * steeringAssist
+      bey.vx += tiltX * BASE_ACCEL * controlFactor * steeringAssist * typeTuning.controlAssistMultiplier
+      bey.vy += tiltY * BASE_ACCEL * controlFactor * steeringAssist * typeTuning.controlAssistMultiplier
 
       const speed = Math.sqrt(bey.vx * bey.vx + bey.vy * bey.vy)
       bey.attackAngle = (bey.attackAngle + bey.attackSpinRate * (0.8 + speed / 20)) % (Math.PI * 2)
@@ -595,9 +674,9 @@ class GameScene extends Phaser.Scene {
       bey.y += bey.vy
       bey.vx *= FRICTION
       bey.vy *= FRICTION
-      bey.ringoutRisk = Math.max(0, bey.ringoutRisk - RINGOUT_RISK_DECAY)
+      bey.ringoutRisk = Math.max(0, bey.ringoutRisk - RINGOUT_RISK_DECAY * typeTuning.ringoutRiskDecayMultiplier)
 
-      bey.energy = Math.max(0, bey.energy - ENERGY_DECAY)
+      bey.energy = Math.max(0, bey.energy - ENERGY_DECAY * typeTuning.energyDecayMultiplier)
 
       if (bey.energy <= 0) {
         bey.isActive = false
@@ -660,14 +739,15 @@ class GameScene extends Phaser.Scene {
           ((1 + COLLISION_RESTITUTION) * closingSpeed) / 2 * COLLISION_KNOCKBACK_BOOST,
         )
 
-        // 防御型の吹き飛ばし補正
-        if (a.beyType === 'defense') knockbackStrength *= 1.4
-        if (b.beyType === 'defense') knockbackStrength *= 1.4
+        const aType = this.getTypeTuning(a.beyType)
+        const bType = this.getTypeTuning(b.beyType)
+        const knockbackToA = knockbackStrength * bType.knockbackPowerMultiplier / aType.knockbackResistMultiplier
+        const knockbackToB = knockbackStrength * aType.knockbackPowerMultiplier / bType.knockbackResistMultiplier
 
-        a.vx -= knockbackStrength * nx
-        a.vy -= knockbackStrength * ny
-        b.vx += knockbackStrength * nx
-        b.vy += knockbackStrength * ny
+        a.vx -= knockbackToA * nx
+        a.vy -= knockbackToA * ny
+        b.vx += knockbackToB * nx
+        b.vy += knockbackToB * ny
 
         const penetration = minDist - dist
         const correction = (Math.max(penetration - 0.1, 0) / 2) * 0.35
@@ -701,6 +781,7 @@ class GameScene extends Phaser.Scene {
 
         if (aCriticalHit) {
           const bonus = impact * (ATTACK_POINT_KNOCKBACK_MULTIPLIER - 1)
+            * aType.knockbackPowerMultiplier / bType.knockbackResistMultiplier
           b.vx += bonus * nx
           b.vy += bonus * ny
           a.vx -= bonus * ATTACK_POINT_SELF_RECOIL * nx
@@ -708,6 +789,7 @@ class GameScene extends Phaser.Scene {
         }
         if (bCriticalHit) {
           const bonus = impact * (ATTACK_POINT_KNOCKBACK_MULTIPLIER - 1)
+            * bType.knockbackPowerMultiplier / aType.knockbackResistMultiplier
           a.vx -= bonus * nx
           a.vy -= bonus * ny
           b.vx += bonus * ATTACK_POINT_SELF_RECOIL * nx
@@ -723,13 +805,15 @@ class GameScene extends Phaser.Scene {
         const bOutwardNorm = Phaser.Math.Clamp(bOutwardSpeed / WALL_RINGOUT_IMMEDIATE_SPEED, 0, 1)
 
         const aRiskGain =
-          impactNorm * COLLISION_RINGOUT_RISK_GAIN
+          (impactNorm * COLLISION_RINGOUT_RISK_GAIN
           + aOutwardNorm * OUTWARD_RINGOUT_RISK_GAIN
           + (bCriticalHit ? 0.08 : 0)
+          ) * aType.ringoutRiskGainMultiplier
         const bRiskGain =
-          impactNorm * COLLISION_RINGOUT_RISK_GAIN
+          (impactNorm * COLLISION_RINGOUT_RISK_GAIN
           + bOutwardNorm * OUTWARD_RINGOUT_RISK_GAIN
           + (aCriticalHit ? 0.08 : 0)
+          ) * bType.ringoutRiskGainMultiplier
 
         a.ringoutRisk = Phaser.Math.Clamp(a.ringoutRisk + aRiskGain, 0, 1)
         b.ringoutRisk = Phaser.Math.Clamp(b.ringoutRisk + bRiskGain, 0, 1)
@@ -742,15 +826,15 @@ class GameScene extends Phaser.Scene {
         let damageToA =
           baseImpactDamage
           * (0.3 + 1.15 * (bForwardSpeed / totalForwardSpeed))
+          * bType.damageDealtMultiplier
+          * aType.damageTakenMultiplier
           * (bCriticalHit ? ATTACK_POINT_DAMAGE_MULTIPLIER : 1)
         let damageToB =
           baseImpactDamage
           * (0.3 + 1.15 * (aForwardSpeed / totalForwardSpeed))
+          * aType.damageDealtMultiplier
+          * bType.damageTakenMultiplier
           * (aCriticalHit ? ATTACK_POINT_DAMAGE_MULTIPLIER : 1)
-
-        // パワー型の攻撃力補正 (攻撃力アップ)
-        if (a.beyType === 'power') damageToB *= 1.25
-        if (b.beyType === 'power') damageToA *= 1.25
 
         a.energy = Math.max(0, a.energy - damageToA)
         b.energy = Math.max(0, b.energy - damageToB)
@@ -852,14 +936,17 @@ class GameScene extends Phaser.Scene {
     const nx = dist === 0 ? 1 : bey.x / dist
     const ny = dist === 0 ? 0 : bey.y / dist
     const outwardSpeed = bey.vx * nx + bey.vy * ny
+    const typeTuning = this.getTypeTuning(bey.beyType)
+    const immediateRingoutThreshold = WALL_RINGOUT_IMMEDIATE_SPEED * typeTuning.wallRingoutThresholdMultiplier
+    const riskRingoutSpeedThreshold = WALL_RINGOUT_RISK_SPEED_THRESHOLD * typeTuning.wallRingoutThresholdMultiplier
 
     // 超高速で壁に突っ込んだ場合は、そのまま場外負け
-    if (outwardSpeed >= WALL_RINGOUT_IMMEDIATE_SPEED) {
+    if (outwardSpeed >= immediateRingoutThreshold) {
       return 'ringout'
     }
 
     // 衝突で蓄積したリスクが高い状態で外向き速度が十分なら場外
-    if (bey.ringoutRisk >= RINGOUT_RISK_TRIGGER && outwardSpeed >= WALL_RINGOUT_RISK_SPEED_THRESHOLD) {
+    if (bey.ringoutRisk >= RINGOUT_RISK_TRIGGER && outwardSpeed >= riskRingoutSpeedThreshold) {
       return 'ringout'
     }
 
@@ -873,9 +960,14 @@ class GameScene extends Phaser.Scene {
     }
 
     // 壁反射で踏みとどまった時は、場外リスクを少しだけ下げる
-    bey.ringoutRisk = Math.max(0, bey.ringoutRisk - 0.12)
+    bey.ringoutRisk = Math.max(0, bey.ringoutRisk - 0.12 * typeTuning.wallRiskRecoveryBonus)
 
     return 'wall'
+  }
+
+  private getTypeTuning(beyType?: GameState['players'][number]['beyType']): TypeTuning {
+    const key = (beyType ?? 'balance') as BeyTypeKey
+    return TYPE_TUNING[key] ?? TYPE_TUNING.balance
   }
 
   private projectX(x: number) {
