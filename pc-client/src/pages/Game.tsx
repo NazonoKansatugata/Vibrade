@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useGameSocket } from '../hooks/useGameSocket'
 import GameCanvas from '../components/GameCanvas'
 import GameStatus from '../components/GameStatus'
+import QRDisplay from '../components/QRDisplay'
 import { useDemoGameState } from '../hooks/useDemoGameState'
 import type { GameState } from '../types'
 import type { CollisionEventPayload } from '../game/scenes/GameScene'
@@ -23,7 +24,7 @@ const Game = () => {
   const [actionFlash, setActionFlash] = useState<{ playerSocketId: string; power: number } | null>(null)
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const { latestGameStart, latestPlayerInput, latestPlayerInputs, players, triggerVibrate, triggerVibrateTargets, latestLaunchBey } = useGameSocket(resolvedRoomId, {
+  const { latestGameStart, latestPlayerInput, latestPlayerInputs, players, triggerVibrate, triggerVibrateTargets, latestLaunchBey, startGame } = useGameSocket(resolvedRoomId, {
     onLaunch: (payload) => {
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
       setActionFlash({ playerSocketId: payload.playerSocketId, power: payload.power })
@@ -59,10 +60,13 @@ const Game = () => {
   }, [])
 
   const handleRetry = useCallback(() => {
-    if (!effectiveGameStart) return
+    // サーバーに開始を通知することで、最新の参加者リストで全端末を同期させる
+    startGame()
+    
+    // UIを初期化状態に戻す
     setSceneGameState(undefined)
     setRetrySeed((prev) => prev + 1)
-  }, [effectiveGameStart])
+  }, [startGame])
 
   const handleCollision = useCallback((payload: CollisionEventPayload) => {
     const targetSocketIds = effectivePlayersRef.current
@@ -86,6 +90,10 @@ const Game = () => {
           canRetry={Boolean(effectiveGameStart)}
           onRetry={handleRetry}
         />
+
+        <div className="game-page__qr-container">
+          <QRDisplay roomId={resolvedRoomId} variant="compact" />
+        </div>
 
         {ENABLE_TILT_PANEL && (
           <div className="socket-debug-panel">

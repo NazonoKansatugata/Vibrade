@@ -3,7 +3,7 @@ import { QRCodeCanvas } from 'qrcode.react'
 
 interface QRDisplayProps {
   roomId: string
-  serverUrl?: string
+  variant?: 'default' | 'compact'
 }
 
 const MOBILE_PROD_URL = 'https://vibrade-mobile.vercel.app'
@@ -16,11 +16,11 @@ const getBaseUrl = () => {
   return MOBILE_PROD_URL;
 }
 
-const QRDisplay = ({ roomId }: QRDisplayProps) => {
+const QRDisplay = ({ roomId, variant = 'default' }: QRDisplayProps) => {
   const qrRef = useRef<HTMLDivElement>(null)
 
   const serverUrl = getBaseUrl()
-  const shouldWarnLocalhost = /localhost|127\.0\.0\.1/.test(serverUrl)
+  const shouldWarnLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   
   // スマホのデフォルト QR リーダーがブラウザで開く URL
   const joinUrl = `${serverUrl}/join?room=${roomId}`
@@ -34,41 +34,59 @@ const QRDisplay = ({ roomId }: QRDisplayProps) => {
     link.click()
   }
 
+  if (variant === 'compact') {
+    return (
+      <div className="qr-display qr-display--compact">
+        <p className="qr-display__title">プレイヤー招待 (再接続用)</p>
+  
+        <div className="qr-display__code" ref={qrRef}>
+          <QRCodeCanvas
+            value={joinUrl}
+            size={120}
+            level="H"
+            marginSize={2}
+          />
+        </div>
+  
+        <div className="qr-display__info">
+          <p className="qr-display__hint">
+            📱 スマホで読み取って復帰
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="qr-display">
-      <h2>プレイヤーを招待</h2>
+      <h2 style={{ fontSize: '1rem', marginBottom: '8px' }}>プレイヤーを招待</h2>
 
       <div className="qr-display__code" ref={qrRef}>
         <QRCodeCanvas
           value={joinUrl}
-          size={256}
+          size={180}
           level="H"
           marginSize={2}
         />
       </div>
 
       <div className="qr-display__info">
-        <p>
-          <strong>ルームID:</strong>{' '}
-          <span className="qr-display__room-id">{roomId}</span>
+        <p style={{ fontSize: '0.8rem', opacity: 0.8 }}>
+          ルームID: <strong style={{ letterSpacing: '2px' }}>{roomId}</strong>
         </p>
 
-        {shouldWarnLocalhost ? (
-          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-xs">
-            <p>⚠️ <strong>ローカルテスト時の注意</strong></p>
-            <p className="mt-1">
-              現在 <code>localhost</code> で開かれているため、スマホからQRコードを読み取っても正しくアクセスできません。<br/>
-              PCのブラウザで <code>http://&lt;PCのIPアドレス&gt;:5173</code> を開き直すと、スマホ用の正しいQRコードが生成されます。
-            </p>
-          </div>
-        ) : (
-          <p className="qr-display__hint">
-            📱 スマホのカメラでこの QR を読み取ってください
+        {shouldWarnLocalhost && (
+          <p style={{ color: '#ef4444', fontSize: '10px', marginTop: '4px' }}>
+            ⚠️ localhost では動作しません。IPアドレスを使用してください。
           </p>
         )}
       </div>
 
-      <button className="btn btn--secondary" onClick={handleDownload}>
+      <button 
+        className="btn btn--secondary" 
+        onClick={handleDownload}
+        style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+      >
         QR をダウンロード
       </button>
     </div>

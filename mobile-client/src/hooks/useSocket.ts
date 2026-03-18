@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { controlSocket } from '../socket/controlSocket';
 import { ServerEvents } from '../socket/events';
 import { isHapticSupported, useHapticFeedback } from './useHapticFeedback';
@@ -18,6 +18,13 @@ export interface GameStateData {
 }
 
 
+const generateUUID = () => {
+  return window.crypto.randomUUID ? window.crypto.randomUUID() : 
+    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+};
 
 export const useSocket = (roomId: string, playerName: string, beyType: string) => {
   const [isConnected, setIsConnected] = useState(false);
@@ -27,10 +34,19 @@ export const useSocket = (roomId: string, playerName: string, beyType: string) =
   const wasLaunchActiveRef = useRef(false);
   const { triggerFeedback } = useHapticFeedback();
 
+  // プレイヤーIDの永続化
+  const playerId = useMemo(() => {
+    const savedId = localStorage.getItem('vibrade_player_id');
+    if (savedId) return savedId;
+    const newId = generateUUID();
+    localStorage.setItem('vibrade_player_id', newId);
+    return newId;
+  }, []);
+
   useEffect(() => {
     // 接続と入室
     const socket = controlSocket.connect();
-    controlSocket.joinRoom(roomId, playerName, beyType);
+    controlSocket.joinRoom(roomId, playerName, beyType, playerId);
 
     const onConnect = () => {
       setIsConnected(true);
