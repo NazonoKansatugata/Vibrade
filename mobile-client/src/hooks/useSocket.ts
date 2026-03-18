@@ -116,7 +116,7 @@ export const useSocket = (roomId: string, playerName: string, beyType: string) =
       socket.off(ServerEvents.ERROR, onError);
       controlSocket.disconnect();
     };
-  }, [roomId, playerName, beyType, triggerFeedback]);
+  }, [roomId, playerName, beyType, playerId, triggerFeedback]);
 
   // Socket経由で入力を送信する関数
   const sendInput = (tiltX: number, tiltY: number, shakePower: number) => {
