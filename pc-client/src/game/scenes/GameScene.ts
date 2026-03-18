@@ -173,6 +173,7 @@ class GameScene extends Phaser.Scene {
   private countdownState: '3' | '2' | '1' | 'GO' | 'SHOOT' | 'NONE' = 'NONE'
   private lastCountdownUpdateAt: number = 0
   private lastCollisionHapticAt = new Map<string, number>()
+  private specialAttackFlashTicks: number = 0
 
   constructor(
     roomId: string,
@@ -208,6 +209,19 @@ class GameScene extends Phaser.Scene {
 
   update(time: number, delta: number) {
     this.beySprites.forEach((bey) => bey.tick())
+
+    if (this.specialAttackFlashTicks > 0) {
+      this.specialAttackFlashTicks--
+      // 1秒間に15回色を変える (1000ms / 15 = 約66.6ms ごとに更新)
+      const step = Math.floor(this.game.loop.time / (1000 / 15))
+      const hue = (step * 0.23) % 1 // 各ステップで大きく色を変える
+      const color = Phaser.Display.Color.HSLToColor(hue, 1, 0.5)
+      this.cameras.main.setBackgroundColor(color.color)
+      
+      if (this.specialAttackFlashTicks === 0) {
+        this.cameras.main.setBackgroundColor('#0f172a')
+      }
+    }
 
     if (!this.isGameActive) {
       return
@@ -598,6 +612,7 @@ class GameScene extends Phaser.Scene {
       )
       bey.specialAttackTicks = Math.max(bey.specialAttackTicks, SPECIAL_ATTACK_WINDOW_TICKS)
       bey.specialAttackBonusDamage = Math.max(bey.specialAttackBonusDamage, bonusDamage)
+      this.triggerSpecialAttack()
     }
 
     // 最大速度制限は simulateTick で行われるが、瞬間的に超えるのは許容（あるいはここで軽くキャップ）
@@ -644,6 +659,10 @@ class GameScene extends Phaser.Scene {
     this.countdownText.setOrigin(0.5)
     this.countdownText.setVisible(false)
     this.countdownText.setDepth(100)
+  }
+
+  public triggerSpecialAttack() {
+    this.specialAttackFlashTicks = 30 // Approx 1 second at 33ms/tick
   }
 
   private renderGameState() {
