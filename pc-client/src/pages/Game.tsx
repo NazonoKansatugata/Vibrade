@@ -142,8 +142,6 @@ const Game = () => {
       <aside className="game-page__sidebar">
         <GameStatus
           gameState={gameState}
-          canRetry={Boolean(effectiveGameStart)}
-          onRetry={handleRetry}
         />
 
         <div className="game-page__qr-container">
