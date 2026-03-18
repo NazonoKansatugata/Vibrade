@@ -175,6 +175,7 @@ class GameScene extends Phaser.Scene {
   private countdownState: '3' | '2' | '1' | 'GO' | 'SHOOT' | 'NONE' = 'NONE'
   private lastCountdownUpdateAt: number = 0
   private lastCollisionHapticAt = new Map<string, number>()
+  private specialAttackFlashTicks: number = 0
 
   constructor(
     roomId: string,
@@ -211,16 +212,17 @@ class GameScene extends Phaser.Scene {
   update(time: number, delta: number) {
     this.beySprites.forEach((bey) => bey.tick())
 
-    // 既存のBeyごとのスペシャル状態をチェックして背景を切り替える
-    const isAnyBeySpecial = Array.from(this.runtimeBeys.values()).some((b) => b.isActive && b.specialAttackTicks > 0)
-    if (isAnyBeySpecial) {
+    // スペシャル衝突時の虹色演出（1秒間、毎秒15回）
+    if (this.specialAttackFlashTicks > 0) {
+      this.specialAttackFlashTicks--
       const step = Math.floor(this.game.loop.time / (1000 / 15))
       const hue = (step * 0.23) % 1
       const color = Phaser.Display.Color.HSLToColor(hue, 1, 0.5)
       this.cameras.main.setBackgroundColor(color.color)
-    } else {
-      // スペシャル中でない場合はデフォルト色に戻す
-      this.cameras.main.setBackgroundColor('#0f172a')
+      
+      if (this.specialAttackFlashTicks === 0) {
+        this.cameras.main.setBackgroundColor('#0f172a')
+      }
     }
 
     if (!this.isGameActive) {
@@ -928,6 +930,9 @@ class GameScene extends Phaser.Scene {
           + aSpecialBonus
 
         const hasSpecialHit = aSpecialBonus > 0 || bSpecialBonus > 0
+        if (hasSpecialHit) {
+          this.specialAttackFlashTicks = 30 // 約1秒間（33ms * 30）
+        }
         this.emitCollisionHaptic([a.playerId, b.playerId], hasSpecialHit ? 'special' : 'bey')
 
         if (aSpecialBonus > 0) {

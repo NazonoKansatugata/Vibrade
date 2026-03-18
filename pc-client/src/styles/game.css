@@ -323,38 +323,3 @@
 .game-result-overlay__qr .qr-display__info {
   display: none;
 }
-/* ── Animations ─────────────────────────────── */
-@keyframes specialStrikeFlash {
-  from { opacity: 0.95; }
-  45% { opacity: 0.6; }
-  to { opacity: 0; }
-}
-
-@keyframes rainbow-pachinko {
-  0%   { background-color: hsl(0, 100%, 50%); }
-  6.6% { background-color: hsl(24, 100%, 50%); }
-  13.3%{ background-color: hsl(48, 100%, 50%); }
-  20%  { background-color: hsl(72, 100%, 50%); }
-  26.6%{ background-color: hsl(96, 100%, 50%); }
-  33.3%{ background-color: hsl(120, 100%, 50%); }
-  40%  { background-color: hsl(144, 100%, 50%); }
-  46.6%{ background-color: hsl(168, 100%, 50%); }
-  53.3%{ background-color: hsl(192, 100%, 50%); }
-  60%  { background-color: hsl(216, 100%, 50%); }
-  66.6%{ background-color: hsl(240, 100%, 50%); }
-  73.3%{ background-color: hsl(264, 100%, 50%); }
-  80%  { background-color: hsl(288, 100%, 50%); }
-  86.6%{ background-color: hsl(312, 100%, 50%); }
-  93.3%{ background-color: hsl(336, 100%, 50%); }
-  100% { background-color: hsl(360, 100%, 50%); }
-}
-
-.special-rainbow-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 120;
-  pointer-events: none;
-  animation: 
-    rainbow-pachinko 0.066s linear infinite,
-    specialStrikeFlash 900ms ease-out forwards;
-}
