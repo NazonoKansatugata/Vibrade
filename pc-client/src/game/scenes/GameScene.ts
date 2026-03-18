@@ -6,17 +6,20 @@ import type { GameStartPayload, PlayerInputPayload, LaunchBeyPayload } from '../
 const TICK_MS = 33
 const FRICTION = 0.98
 const ENERGY_DECAY = 0.05
-const BASE_ACCEL = 1.5
-const BOOST_FORCE = 8.0
+const BASE_ACCEL = 0.55
+const BOOST_FORCE = 14.0
 const COLLISION_RESTITUTION = 0.82
 const COLLISION_KNOCKBACK_BOOST = 1.45
 const MIN_COLLISION_KNOCKBACK = 2.0
 const WALL_RESTITUTION = 0.86
-const COLLISION_RINGOUT_MIN_TICKS = 6
-const COLLISION_RINGOUT_MAX_TICKS = 14
-const COLLISION_RINGOUT_IMPACT_THRESHOLD = 2.9
-const BASE_DAMAGE = 7
-const IMPACT_MULTIPLIER = 0.45
+const WALL_RINGOUT_IMMEDIATE_SPEED = 16.0
+const WALL_RINGOUT_RISK_SPEED_THRESHOLD = 9.5
+const RINGOUT_RISK_DECAY = 0.055
+const COLLISION_RINGOUT_RISK_GAIN = 0.22
+const OUTWARD_RINGOUT_RISK_GAIN = 0.18
+const RINGOUT_RISK_TRIGGER = 0.52
+const BASE_DAMAGE = 4
+const IMPACT_MULTIPLIER = 0.8
 const BASE_ENERGY = 100
 const ARMED_TIMEOUT_MS = 3000
 const COUNTDOWN_INTERVAL_MS = 1000
@@ -47,7 +50,7 @@ interface RuntimeBey {
   energy: number
   isActive: boolean
   radius: number
-  ringoutArmedTicks: number
+  ringoutRisk: number
   attackAngle: number
   attackSpinRate: number
   launchTime?: number
@@ -62,8 +65,6 @@ class GameScene extends Phaser.Scene {
   private unitToPixel: number = 1
   private arena?: Phaser.GameObjects.Arc
   private arenaRing?: Phaser.GameObjects.Arc
-  private roomLabel?: Phaser.GameObjects.Text
-  private infoLabel?: Phaser.GameObjects.Text
   private beySprites = new Map<string, BeySprite>()
   private players: GameState['players'] = []
   private runtimeBeys = new Map<string, RuntimeBey>()
@@ -76,6 +77,8 @@ class GameScene extends Phaser.Scene {
   private lastFrameAt = 0
   private isSceneReady = false
   private pendingStartPayload?: GameStartPayload
+  private countdownBg?: Phaser.GameObjects.Graphics
+  private countdownBox?: Phaser.GameObjects.Graphics
   private countdownText?: Phaser.GameObjects.Text
   private shootStartTime: number = 0
   private countdownState: '3' | '2' | '1' | 'GO' | 'SHOOT' | 'NONE' = 'NONE'
@@ -96,8 +99,7 @@ class GameScene extends Phaser.Scene {
   create() {
     this.isSceneReady = true
     this.cameras.main.setBackgroundColor('#0f172a')
-    this.buildScene(this.scale.width, this.scale.height)
-    this.infoLabel?.setText('Waiting for host to start')
+    this.buildScene(this.game.canvas.width, this.game.canvas.height)
 
     if (this.pendingStartPayload) {
       const payload = this.pendingStartPayload
@@ -192,16 +194,115 @@ class GameScene extends Phaser.Scene {
 
     this.countdownText.setText(text)
     this.countdownText.setColor(color)
-    this.countdownText.setScale(scale)
+    this.countdownText.setScale(0.8) // 最初は少し小さめ
     this.countdownText.setVisible(true)
 
-    // ポップアップアニメーション
+    const width = this.scale.width
+    const height = this.scale.height
+    const centerX = width / 2
+    const centerY = height / 2
+
+    const isThree = state === '3'
+
+    // 背景演出の描画
+    if (this.countdownBg) {
+      this.countdownBg.clear()
+      if (!isThree) {
+        // 斜め分割背景 (赤と濃紺)
+        const splitX = centerX + 100
+        this.countdownBg.fillStyle(0x991b1b, 0.85) // Red
+        this.countdownBg.beginPath()
+        this.countdownBg.moveTo(0, 0)
+        this.countdownBg.lineTo(splitX + 150, 0)
+        this.countdownBg.lineTo(splitX - 150, height)
+        this.countdownBg.lineTo(0, height)
+        this.countdownBg.closePath()
+        this.countdownBg.fillPath()
+
+        this.countdownBg.fillStyle(0x1e293b, 0.85) // Dark Grey
+        this.countdownBg.beginPath()
+        this.countdownBg.moveTo(splitX + 150, 0)
+        this.countdownBg.lineTo(width, 0)
+        this.countdownBg.lineTo(width, height)
+        this.countdownBg.lineTo(splitX - 150, height)
+        this.countdownBg.closePath()
+        this.countdownBg.fillPath()
+      }
+      
+      this.countdownBg.setAlpha(0)
+      this.countdownBg.setVisible(true)
+    }
+
+    // ボックス演出の描画
+    if (this.countdownBox) {
+      this.countdownBox.clear()
+      if (!isThree) {
+        const boxW = 800
+        const boxH = 180
+        this.countdownBox.fillStyle(0x0a0a0a, 0.9)
+        this.countdownBox.fillRect(centerX - boxW / 2, centerY - boxH / 2, boxW, boxH)
+        this.countdownBox.lineStyle(4, 0xffffff, 0.8)
+        // 角のアクセント
+        const d = 20
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX - boxW / 2, centerY - boxH / 2 + d, centerX - boxW / 2, centerY - boxH / 2))
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX - boxW / 2, centerY - boxH / 2, centerX - boxW / 2 + d, centerY - boxH / 2))
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX + boxW / 2 - d, centerY - boxH / 2, centerX + boxW / 2, centerY - boxH / 2))
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX + boxW / 2, centerY - boxH / 2, centerX + boxW / 2, centerY - boxH / 2 + d))
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX + boxW / 2, centerY + boxH / 2 - d, centerX + boxW / 2, centerY + boxH / 2))
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX + boxW / 2, centerY + boxH / 2, centerX + boxW / 2 - d, centerY + boxH / 2))
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX - boxW / 2 + d, centerY + boxH / 2, centerX - boxW / 2, centerY + boxH / 2))
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX - boxW / 2, centerY + boxH / 2, centerX - boxW / 2, centerY + boxH / 2 - d))
+      }
+      
+      this.countdownBox.setAlpha(0)
+      this.countdownBox.setVisible(true)
+    }
+
+    const isShoot = state === 'SHOOT'
+    this.countdownText.setPosition(centerX - 1000, centerY)
+    this.countdownText.setAlpha(0)
+
+    // アニメーションシーケンス
+    this.tweens.add({
+      targets: [this.countdownBg, this.countdownBox],
+      alpha: 1,
+      duration: 200
+    })
+
     this.tweens.add({
       targets: this.countdownText,
-      scale: scale * 1.5,
-      alpha: { from: 1, to: 0.8 },
-      duration: 200,
-      yoyo: true,
+      x: centerX,
+      alpha: 1,
+      scale: scale,
+      duration: 300,
+      ease: 'Back.out',
+      onComplete: () => {
+        if (isShoot) {
+          this.tweens.add({
+            targets: this.countdownText,
+            scale: scale * 1.05,
+            duration: 400,
+            yoyo: true,
+            repeat: -1
+          })
+          return
+        }
+
+        this.tweens.add({
+          targets: this.countdownText,
+          x: centerX + 50,
+          duration: 400,
+          onComplete: () => {
+            this.tweens.add({
+              targets: [this.countdownText, this.countdownBox, this.countdownBg],
+              x: { value: '+=1000', targets: this.countdownText },
+              alpha: 0,
+              duration: 250,
+              ease: 'Cubic.in'
+            })
+          }
+        })
+      }
     })
   }
 
@@ -210,10 +311,26 @@ class GameScene extends Phaser.Scene {
     this.countdownState = 'NONE'
     if (this.countdownText) {
       this.tweens.killTweensOf(this.countdownText)
-      this.countdownText.setText('')
-      this.countdownText.setAlpha(1)
-      this.countdownText.setScale(1)
-      this.countdownText.setVisible(false)
+      if (this.countdownBg) this.tweens.killTweensOf(this.countdownBg)
+      if (this.countdownBox) this.tweens.killTweensOf(this.countdownBox)
+      
+      // 全体をフェードアウトしながら抜ける
+      this.tweens.add({
+        targets: [this.countdownText, this.countdownBox, this.countdownBg],
+        alpha: 0,
+        x: { value: '+=800', targets: this.countdownText }, // テキストだけ少し動かす
+        duration: 400,
+        ease: 'Cubic.in',
+        onComplete: () => {
+          this.countdownText?.setText('')
+          this.countdownText?.setAlpha(1)
+          this.countdownText?.setScale(1)
+          this.countdownText?.setPosition(this.scale.width / 2, this.scale.height / 2)
+          this.countdownText?.setVisible(false)
+          this.countdownBg?.setVisible(false)
+          this.countdownBox?.setVisible(false)
+        }
+      })
     }
 
     const totalPlayers = this.runtimeBeys.size
@@ -295,7 +412,7 @@ class GameScene extends Phaser.Scene {
         energy: 100,
         isActive: true,
         radius: BEY_RADIUS,
-        ringoutArmedTicks: 0,
+        ringoutRisk: 0,
         attackAngle: ((index * Math.PI) / 2) % (Math.PI * 2),
         attackSpinRate: 0.18 + (index % 3) * 0.03,
         launchTime: undefined,
@@ -353,7 +470,8 @@ class GameScene extends Phaser.Scene {
     }
 
     // パワーに応じたブースト（最大 BOOST_FORCE）
-    const force = BOOST_FORCE * Math.max(0.2, payload.power)
+    const normalizedPower = Phaser.Math.Clamp(payload.power, 0, 1)
+    const force = BOOST_FORCE * (0.45 + normalizedPower * 1.55)
     
     if (this.status === 'armed') {
       // 準備中は何回振っても最後のタイミングが記録される（お手付き上書き可、ただしSHOOT後は確定）
@@ -373,8 +491,8 @@ class GameScene extends Phaser.Scene {
   private buildScene(width: number, height: number) {
     this.arena?.destroy()
     this.arenaRing?.destroy()
-    this.roomLabel?.destroy()
-    this.infoLabel?.destroy()
+    this.countdownBg?.destroy()
+    this.countdownBox?.destroy()
     this.countdownText?.destroy()
 
     const centerX = width / 2
@@ -387,48 +505,34 @@ class GameScene extends Phaser.Scene {
     // 現在の人数に応じた描画半径
     const currentArenaPixelRadius = this.arenaRadius * this.unitToPixel
 
-    this.add.rectangle(centerX, centerY, width, height, 0x0b1120, 1)
-
     this.arena = this.add.circle(centerX, centerY, currentArenaPixelRadius, 0x132238, 0.95)
     this.arena.setStrokeStyle(8, 0x38bdf8, 0.35)
 
-    this.arenaRing = this.add.circle(centerX, centerY, currentArenaPixelRadius * 0.72, 0x0f172a, 0)
-    this.arenaRing.setStrokeStyle(3, 0xe2e8f0, 0.25)
+    // --- カウントダウン演出用アセット ---
+    this.countdownBg = this.add.graphics()
+    this.countdownBg.setDepth(90)
+    this.countdownBg.setVisible(false)
 
-    this.roomLabel = this.add.text(centerX, 36, `ROOM ${this.roomId}`, {
-      fontFamily: 'Segoe UI',
-      fontSize: '24px',
-      color: '#e2e8f0',
-      fontStyle: 'bold',
-    })
-    this.roomLabel.setOrigin(0.5, 0)
+    this.countdownBox = this.add.graphics()
+    this.countdownBox.setDepth(95)
+    this.countdownBox.setVisible(false)
 
     this.countdownText = this.add.text(centerX, centerY, '', {
-      fontFamily: 'Segoe UI',
-      fontSize: '84px',
+      fontFamily: 'Arial Black, Impact, sans-serif',
+      fontSize: '110px',
       color: '#ffffff',
-      fontStyle: 'bold',
+      fontStyle: 'bold italic',
+      stroke: '#000000',
+      strokeThickness: 12,
+      padding: { left: 20, right: 40, top: 10, bottom: 10 },
     })
     this.countdownText.setOrigin(0.5)
     this.countdownText.setVisible(false)
     this.countdownText.setDepth(100)
-
-    this.infoLabel = this.add.text(centerX, height - 44, 'Phaser minimal scene: waiting for server gameState', {
-      fontFamily: 'Segoe UI',
-      fontSize: '18px',
-      color: '#94a3b8',
-    })
-    this.infoLabel.setOrigin(0.5, 1)
   }
 
   private renderGameState() {
     const gameState = this.buildGameState()
-
-    this.infoLabel?.setText(
-      gameState.isGameActive
-        ? `Tick ${gameState.tick} • ${gameState.beys.length} beys rendering`
-        : 'Waiting for players to start',
-    )
 
     const activeIds = new Set(gameState.beys.map((bey) => bey.id))
 
@@ -478,9 +582,11 @@ class GameScene extends Phaser.Scene {
       const tiltX = input?.tiltX ?? 0
       const tiltY = input?.tiltY ?? 0
 
+      const speedBeforeInput = Math.sqrt(bey.vx * bey.vx + bey.vy * bey.vy)
       const controlFactor = Math.max(0.3, 1 - bey.energy / 200)
-      bey.vx += tiltX * BASE_ACCEL * controlFactor
-      bey.vy += tiltY * BASE_ACCEL * controlFactor
+      const steeringAssist = Math.min(1, speedBeforeInput / 10)
+      bey.vx += tiltX * BASE_ACCEL * controlFactor * steeringAssist
+      bey.vy += tiltY * BASE_ACCEL * controlFactor * steeringAssist
 
       const speed = Math.sqrt(bey.vx * bey.vx + bey.vy * bey.vy)
       bey.attackAngle = (bey.attackAngle + bey.attackSpinRate * (0.8 + speed / 20)) % (Math.PI * 2)
@@ -489,6 +595,7 @@ class GameScene extends Phaser.Scene {
       bey.y += bey.vy
       bey.vx *= FRICTION
       bey.vy *= FRICTION
+      bey.ringoutRisk = Math.max(0, bey.ringoutRisk - RINGOUT_RISK_DECAY)
 
       bey.energy = Math.max(0, bey.energy - ENERGY_DECAY)
 
@@ -511,10 +618,6 @@ class GameScene extends Phaser.Scene {
         bey.vx = 0
         bey.vy = 0
         return
-      }
-
-      if (bey.ringoutArmedTicks > 0) {
-        bey.ringoutArmedTicks -= 1
       }
     })
 
@@ -566,9 +669,6 @@ class GameScene extends Phaser.Scene {
         b.vx += knockbackStrength * nx
         b.vy += knockbackStrength * ny
 
-        b.vx += knockbackStrength * nx
-        b.vy += knockbackStrength * ny
-
         const penetration = minDist - dist
         const correction = (Math.max(penetration - 0.1, 0) / 2) * 0.35
         a.x -= nx * correction
@@ -576,8 +676,8 @@ class GameScene extends Phaser.Scene {
         b.x += nx * correction
         b.y += ny * correction
 
-        const impact = knockbackStrength
-  this.emitCollisionHaptic([a.playerId, b.playerId], 'bey')
+          const impact = knockbackStrength
+          this.emitCollisionHaptic([a.playerId, b.playerId], 'bey')
 
         const aAttackX = Math.cos(a.attackAngle)
         const aAttackY = Math.sin(a.attackAngle)
@@ -613,31 +713,39 @@ class GameScene extends Phaser.Scene {
           b.vx += bonus * ATTACK_POINT_SELF_RECOIL * nx
           b.vy += bonus * ATTACK_POINT_SELF_RECOIL * ny
         }
-        const aRingoutImpact = impact * (bCriticalHit ? ATTACK_POINT_KNOCKBACK_MULTIPLIER : 1)
-        const bRingoutImpact = impact * (aCriticalHit ? ATTACK_POINT_KNOCKBACK_MULTIPLIER : 1)
 
-        if (aRingoutImpact >= COLLISION_RINGOUT_IMPACT_THRESHOLD) {
-          const ringoutArmTicks = Math.min(
-            COLLISION_RINGOUT_MAX_TICKS,
-            Math.max(COLLISION_RINGOUT_MIN_TICKS, Math.round(aRingoutImpact + 4)),
-          )
-          a.ringoutArmedTicks = Math.max(a.ringoutArmedTicks, ringoutArmTicks)
-        }
+        const impactNorm = Phaser.Math.Clamp((impact - MIN_COLLISION_KNOCKBACK) / 10, 0, 1)
+        const aDist = Math.max(1, Math.sqrt(a.x * a.x + a.y * a.y))
+        const bDist = Math.max(1, Math.sqrt(b.x * b.x + b.y * b.y))
+        const aOutwardSpeed = Math.max(0, (a.vx * a.x + a.vy * a.y) / aDist)
+        const bOutwardSpeed = Math.max(0, (b.vx * b.x + b.vy * b.y) / bDist)
+        const aOutwardNorm = Phaser.Math.Clamp(aOutwardSpeed / WALL_RINGOUT_IMMEDIATE_SPEED, 0, 1)
+        const bOutwardNorm = Phaser.Math.Clamp(bOutwardSpeed / WALL_RINGOUT_IMMEDIATE_SPEED, 0, 1)
 
-        if (bRingoutImpact >= COLLISION_RINGOUT_IMPACT_THRESHOLD) {
-          const ringoutArmTicks = Math.min(
-            COLLISION_RINGOUT_MAX_TICKS,
-            Math.max(COLLISION_RINGOUT_MIN_TICKS, Math.round(bRingoutImpact + 4)),
-          )
-          b.ringoutArmedTicks = Math.max(b.ringoutArmedTicks, ringoutArmTicks)
-        }
+        const aRiskGain =
+          impactNorm * COLLISION_RINGOUT_RISK_GAIN
+          + aOutwardNorm * OUTWARD_RINGOUT_RISK_GAIN
+          + (bCriticalHit ? 0.08 : 0)
+        const bRiskGain =
+          impactNorm * COLLISION_RINGOUT_RISK_GAIN
+          + bOutwardNorm * OUTWARD_RINGOUT_RISK_GAIN
+          + (aCriticalHit ? 0.08 : 0)
 
-        const aAdv = a.energy / Math.max(1, b.energy)
+        a.ringoutRisk = Phaser.Math.Clamp(a.ringoutRisk + aRiskGain, 0, 1)
+        b.ringoutRisk = Phaser.Math.Clamp(b.ringoutRisk + bRiskGain, 0, 1)
+
+        const aForwardSpeed = Math.max(0, a.vx * nx + a.vy * ny)
+        const bForwardSpeed = Math.max(0, -(b.vx * nx + b.vy * ny))
+        const totalForwardSpeed = Math.max(0.2, aForwardSpeed + bForwardSpeed)
+        const baseImpactDamage = BASE_DAMAGE + impact * IMPACT_MULTIPLIER
+
         let damageToA =
-          (BASE_DAMAGE + (impact * IMPACT_MULTIPLIER) / Math.max(0.2, aAdv))
+          baseImpactDamage
+          * (0.3 + 1.15 * (bForwardSpeed / totalForwardSpeed))
           * (bCriticalHit ? ATTACK_POINT_DAMAGE_MULTIPLIER : 1)
         let damageToB =
-          (BASE_DAMAGE + impact * IMPACT_MULTIPLIER * Math.max(0.2, aAdv))
+          baseImpactDamage
+          * (0.3 + 1.15 * (aForwardSpeed / totalForwardSpeed))
           * (aCriticalHit ? ATTACK_POINT_DAMAGE_MULTIPLIER : 1)
 
         // パワー型の攻撃力補正 (攻撃力アップ)
@@ -743,9 +851,15 @@ class GameScene extends Phaser.Scene {
     const dist = Math.sqrt(distSq)
     const nx = dist === 0 ? 1 : bey.x / dist
     const ny = dist === 0 ? 0 : bey.y / dist
+    const outwardSpeed = bey.vx * nx + bey.vy * ny
 
-    // 衝突直後のみ、壁を越えて押し出されたら場外負け
-    if (bey.ringoutArmedTicks > 0 && dist > this.arenaRadius) {
+    // 超高速で壁に突っ込んだ場合は、そのまま場外負け
+    if (outwardSpeed >= WALL_RINGOUT_IMMEDIATE_SPEED) {
+      return 'ringout'
+    }
+
+    // 衝突で蓄積したリスクが高い状態で外向き速度が十分なら場外
+    if (bey.ringoutRisk >= RINGOUT_RISK_TRIGGER && outwardSpeed >= WALL_RINGOUT_RISK_SPEED_THRESHOLD) {
       return 'ringout'
     }
 
@@ -753,11 +867,13 @@ class GameScene extends Phaser.Scene {
     bey.x = nx * wallContactRadius
     bey.y = ny * wallContactRadius
 
-    const outwardSpeed = bey.vx * nx + bey.vy * ny
     if (outwardSpeed > 0) {
       bey.vx -= (1 + WALL_RESTITUTION) * outwardSpeed * nx
       bey.vy -= (1 + WALL_RESTITUTION) * outwardSpeed * ny
     }
+
+    // 壁反射で踏みとどまった時は、場外リスクを少しだけ下げる
+    bey.ringoutRisk = Math.max(0, bey.ringoutRisk - 0.12)
 
     return 'wall'
   }

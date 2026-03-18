@@ -1,20 +1,17 @@
 import type { GameState } from '../types'
 
 interface GameStatusProps {
-  roomId: string
   gameState?: GameState
   canRetry?: boolean
   onRetry?: () => void
 }
 
-const GameStatus = ({ roomId, gameState, canRetry = false, onRetry }: GameStatusProps) => {
+const GameStatus = ({ gameState, canRetry = false, onRetry }: GameStatusProps) => {
   const playerCount = gameState?.players.length ?? 0
   const activeBeys = gameState?.beys.filter((b) => b.energy > 0).length ?? 0
 
   return (
     <div className="game-status">
-      <p className="game-status__room">Room: <strong>{roomId}</strong></p>
-
       <div className="game-status__state">
         {gameState?.status === 'playing' ? (
           <>
