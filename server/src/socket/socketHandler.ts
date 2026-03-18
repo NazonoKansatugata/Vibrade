@@ -33,7 +33,7 @@ export function registerSocketHandlers(io: Server) {
     });
 
     // --- Mobile Client Events ---
-    socket.on(ClientEvents.JOIN_ROOM, ({ roomId, playerName, beyType }: { roomId: string, playerName: string, beyType: string }) => {
+    socket.on(ClientEvents.JOIN_ROOM, ({ roomId, playerName, beyType, playerId }: { roomId: string, playerName: string, beyType: string, playerId?: string }) => {
       const room = roomManager.getRoom(roomId);
       if (!room) {
         socket.emit(ServerEvents.ERROR, { code: 'NOT_FOUND', message: 'Room not found' });
@@ -41,7 +41,7 @@ export function registerSocketHandlers(io: Server) {
       }
 
       // Add player to room state
-      const result = roomManager.addPlayer(roomId, socket.id, playerName, beyType);
+      const result = roomManager.addPlayer(roomId, socket.id, playerName, beyType, playerId);
       if (!result) {
         socket.emit(ServerEvents.ERROR, { code: 'FULL', message: 'Room is full or unavailable' });
         return;
@@ -142,17 +142,23 @@ export function registerSocketHandlers(io: Server) {
       }
 
       // Case 2: Was it a Player?
-      const removeResult = roomManager.removePlayer(socket.id);
-      if (removeResult) {
-        console.log(`[Player Left] ID: ${socket.id} left Room: ${removeResult.roomId}`);
-        // Notify remaining players and host
-        io.to(removeResult.roomId).emit(ServerEvents.PLAYER_LIST, {
-          roomId: removeResult.roomId,
-          players: removeResult.room.players
+      roomManager.handleDisconnect(socket.id, (roomId, remainingPlayers) => {
+        console.log(`[Player Timeout] ID: ${socket.id} cleanup from Room: ${roomId}`);
+        io.to(roomId).emit(ServerEvents.PLAYER_LIST, {
+          roomId: roomId,
+          players: remainingPlayers
         });
-        
-        // Auto-cleanup if room is empty (excluding host, handled by separate logic or timeout)
-        // Kept simple for now. 
+      });
+      
+      const context = roomManager.getPlayerContextBySocketId(socket.id);
+      if (context) {
+        // Even if we don't remove them yet, we broadcast updated list to show "offline" status if needed
+        // Or at least log it.
+        console.log(`[Player Disconnected] ID: ${socket.id} (Offline) in Room: ${context.roomId}`);
+        io.to(context.roomId).emit(ServerEvents.PLAYER_LIST, {
+          roomId: context.roomId,
+          players: context.room.players
+        });
       }
       
       console.log(`[Socket Disconnected] ID: ${socket.id}`);

@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useGameSocket } from '../hooks/useGameSocket'
 import GameCanvas from '../components/GameCanvas'
 import GameStatus from '../components/GameStatus'
+import QRDisplay from '../components/QRDisplay'
 import { useDemoGameState } from '../hooks/useDemoGameState'
 import type { GameState } from '../types'
 import type { CollisionEventPayload } from '../game/scenes/GameScene'
@@ -80,6 +81,9 @@ const Game = () => {
   return (
     <div className="game-page">
       <aside className="game-page__sidebar">
+        <div className="game-page__qr-container" style={{ marginBottom: '24px', transform: 'scale(0.8)', transformOrigin: 'top left' }}>
+          <QRDisplay roomId={resolvedRoomId} />
+        </div>
         <GameStatus
           roomId={resolvedRoomId}
           gameState={gameState}
