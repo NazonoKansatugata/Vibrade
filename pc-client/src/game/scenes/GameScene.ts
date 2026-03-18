@@ -74,6 +74,8 @@ class GameScene extends Phaser.Scene {
   private lastFrameAt = 0
   private isSceneReady = false
   private pendingStartPayload?: GameStartPayload
+  private countdownBg?: Phaser.GameObjects.Graphics
+  private countdownBox?: Phaser.GameObjects.Graphics
   private countdownText?: Phaser.GameObjects.Text
   private shootStartTime: number = 0
   private countdownState: '3' | '2' | '1' | 'GO' | 'SHOOT' | 'NONE' = 'NONE'
@@ -189,52 +191,112 @@ class GameScene extends Phaser.Scene {
 
     this.countdownText.setText(text)
     this.countdownText.setColor(color)
-    this.countdownText.setScale(scale)
+    this.countdownText.setScale(0.8) // 最初は少し小さめ
     this.countdownText.setVisible(true)
 
-    const centerX = this.scale.width / 2
-    const centerY = this.scale.height / 2
+    const width = this.scale.width
+    const height = this.scale.height
+    const centerX = width / 2
+    const centerY = height / 2
 
-    // 初期位置を左画面外に設定
-    this.countdownText.setPosition(centerX - 800, centerY)
-    this.countdownText.setAlpha(0)
+    const isThree = state === '3'
+
+    // 背景演出の描画
+    if (this.countdownBg) {
+      this.countdownBg.clear()
+      if (!isThree) {
+        // 斜め分割背景 (赤と濃紺)
+        const splitX = centerX + 100
+        this.countdownBg.fillStyle(0x991b1b, 0.85) // Red
+        this.countdownBg.beginPath()
+        this.countdownBg.moveTo(0, 0)
+        this.countdownBg.lineTo(splitX + 150, 0)
+        this.countdownBg.lineTo(splitX - 150, height)
+        this.countdownBg.lineTo(0, height)
+        this.countdownBg.closePath()
+        this.countdownBg.fillPath()
+
+        this.countdownBg.fillStyle(0x1e293b, 0.85) // Dark Grey
+        this.countdownBg.beginPath()
+        this.countdownBg.moveTo(splitX + 150, 0)
+        this.countdownBg.lineTo(width, 0)
+        this.countdownBg.lineTo(width, height)
+        this.countdownBg.lineTo(splitX - 150, height)
+        this.countdownBg.closePath()
+        this.countdownBg.fillPath()
+      }
+      
+      this.countdownBg.setAlpha(0)
+      this.countdownBg.setVisible(true)
+    }
+
+    // ボックス演出の描画
+    if (this.countdownBox) {
+      this.countdownBox.clear()
+      if (!isThree) {
+        const boxW = 800
+        const boxH = 180
+        this.countdownBox.fillStyle(0x0a0a0a, 0.9)
+        this.countdownBox.fillRect(centerX - boxW / 2, centerY - boxH / 2, boxW, boxH)
+        this.countdownBox.lineStyle(4, 0xffffff, 0.8)
+        // 角のアクセント
+        const d = 20
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX - boxW / 2, centerY - boxH / 2 + d, centerX - boxW / 2, centerY - boxH / 2))
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX - boxW / 2, centerY - boxH / 2, centerX - boxW / 2 + d, centerY - boxH / 2))
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX + boxW / 2 - d, centerY - boxH / 2, centerX + boxW / 2, centerY - boxH / 2))
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX + boxW / 2, centerY - boxH / 2, centerX + boxW / 2, centerY - boxH / 2 + d))
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX + boxW / 2, centerY + boxH / 2 - d, centerX + boxW / 2, centerY + boxH / 2))
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX + boxW / 2, centerY + boxH / 2, centerX + boxW / 2 - d, centerY + boxH / 2))
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX - boxW / 2 + d, centerY + boxH / 2, centerX - boxW / 2, centerY + boxH / 2))
+        this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX - boxW / 2, centerY + boxH / 2, centerX - boxW / 2, centerY + boxH / 2 - d))
+      }
+      
+      this.countdownBox.setAlpha(0)
+      this.countdownBox.setVisible(true)
+    }
 
     const isShoot = state === 'SHOOT'
+    this.countdownText.setPosition(centerX - 1000, centerY)
+    this.countdownText.setAlpha(0)
 
-    // 左から中央へカットイン
+    // アニメーションシーケンス
+    this.tweens.add({
+      targets: [this.countdownBg, this.countdownBox],
+      alpha: 1,
+      duration: 200
+    })
+
     this.tweens.add({
       targets: this.countdownText,
       x: centerX,
       alpha: 1,
-      duration: 250,
-      ease: 'Cubic.out',
+      scale: scale,
+      duration: 300,
+      ease: 'Back.out',
       onComplete: () => {
         if (isShoot) {
-          // SHOOTの場合は中央で待機（パルス演出）
           this.tweens.add({
             targets: this.countdownText,
-            scale: scale * 1.1,
-            duration: 500,
+            scale: scale * 1.05,
+            duration: 400,
             yoyo: true,
             repeat: -1
           })
           return
         }
 
-        // それ以外（3, 2, 1, GO）は中央で静止した後、右へ抜ける
         this.tweens.add({
           targets: this.countdownText,
           x: centerX + 50,
           duration: 400,
-          ease: 'Linear',
           onComplete: () => {
-             this.tweens.add({
-               targets: this.countdownText,
-               x: centerX + 800,
-               alpha: 0,
-               duration: 250,
-               ease: 'Cubic.in'
-             })
+            this.tweens.add({
+              targets: [this.countdownText, this.countdownBox, this.countdownBg],
+              x: { value: '+=1000', targets: this.countdownText },
+              alpha: 0,
+              duration: 250,
+              ease: 'Cubic.in'
+            })
           }
         })
       }
@@ -246,19 +308,24 @@ class GameScene extends Phaser.Scene {
     this.countdownState = 'NONE'
     if (this.countdownText) {
       this.tweens.killTweensOf(this.countdownText)
+      if (this.countdownBg) this.tweens.killTweensOf(this.countdownBg)
+      if (this.countdownBox) this.tweens.killTweensOf(this.countdownBox)
       
-      // 右へフェードアウトしながら抜ける
+      // 全体をフェードアウトしながら抜ける
       this.tweens.add({
-        targets: this.countdownText,
-        x: (this.scale.width / 2) + 800,
+        targets: [this.countdownText, this.countdownBox, this.countdownBg],
         alpha: 0,
+        x: { value: '+=800', targets: this.countdownText }, // テキストだけ少し動かす
         duration: 400,
         ease: 'Cubic.in',
         onComplete: () => {
           this.countdownText?.setText('')
           this.countdownText?.setAlpha(1)
           this.countdownText?.setScale(1)
+          this.countdownText?.setPosition(this.scale.width / 2, this.scale.height / 2)
           this.countdownText?.setVisible(false)
+          this.countdownBg?.setVisible(false)
+          this.countdownBox?.setVisible(false)
         }
       })
     }
@@ -420,6 +487,8 @@ class GameScene extends Phaser.Scene {
   private buildScene(width: number, height: number) {
     this.arena?.destroy()
     this.arenaRing?.destroy()
+    this.countdownBg?.destroy()
+    this.countdownBox?.destroy()
     this.countdownText?.destroy()
 
     const centerX = width / 2
@@ -435,19 +504,26 @@ class GameScene extends Phaser.Scene {
     this.arena = this.add.circle(centerX, centerY, currentArenaPixelRadius, 0x132238, 0.95)
     this.arena.setStrokeStyle(8, 0x38bdf8, 0.35)
 
-    this.arenaRing = this.add.circle(centerX, centerY, currentArenaPixelRadius * 0.72, 0x0f172a, 0)
-    this.arenaRing.setStrokeStyle(3, 0xe2e8f0, 0.25)
+    // --- カウントダウン演出用アセット ---
+    this.countdownBg = this.add.graphics()
+    this.countdownBg.setDepth(90)
+    this.countdownBg.setVisible(false)
+
+    this.countdownBox = this.add.graphics()
+    this.countdownBox.setDepth(95)
+    this.countdownBox.setVisible(false)
 
     this.countdownText = this.add.text(centerX, centerY, '', {
-      fontFamily: 'Segoe UI',
-      fontSize: '84px',
+      fontFamily: 'Arial Black, Impact, sans-serif',
+      fontSize: '110px',
       color: '#ffffff',
-      fontStyle: 'bold',
+      fontStyle: 'bold italic',
+      stroke: '#000000',
+      strokeThickness: 12,
+      padding: { left: 20, right: 40, top: 10, bottom: 10 },
     })
     this.countdownText.setOrigin(0.5)
     this.countdownText.setVisible(false)
-    this.countdownText.setDepth(100)
-
     this.countdownText.setDepth(100)
   }
 
