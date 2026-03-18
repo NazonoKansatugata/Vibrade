@@ -102,12 +102,12 @@ const HowToPlay = () => {
             <div className="how-to-card__icon">🛡️</div>
             <div className="how-to-card__text">
               <h3>防御型</h3>
-              <p>堅牢な防御力と場外リスクの軽減が特徴。相手の攻撃に強く、長く戦い続けられます。射出力は低めです。</p>
+              <p>ダメージとノックバックに強い防御的性能。壁に押し出されにくく、相手の攻撃をこらえながら長く戦えます。攻撃力は低めです。</p>
               <ul className="bey-stats">
                 <li>射出力：低い</li>
                 <li>操作性：低い</li>
-                <li>耐久性：高い（ダメージに強い）</li>
-                <li>場外リスク：蓄積しにくい</li>
+                <li>ダメージ耐性：非常に高い</li>
+                <li>場外リスク：蓄積しにくく回復が速い</li>
               </ul>
             </div>
           </section>
@@ -116,11 +116,11 @@ const HowToPlay = () => {
             <div className="how-to-card__icon">⚙️</div>
             <div className="how-to-card__text">
               <h3>スタミナ型</h3>
-              <p>優れた操作性と高い耐久性を兼ね備えたベイ。細かい操作で相手を翻弄でき、長時間戦い続けられます。</p>
+              <p>高い機動力とエネルギー効率に優れたベイ。細かい操作で相手を翻弄でき、長時間戦い続けられます。器用な立ち回りが得意です。</p>
               <ul className="bey-stats">
                 <li>射出力：低い</li>
                 <li>操作性：非常に高い</li>
-                <li>耐久性：非常に高い（HPが多い）</li>
+                <li>機動力：優れ、エネルギー消費が少ない</li>
                 <li>場外リスク：蓄積しにくい</li>
               </ul>
             </div>
@@ -172,9 +172,9 @@ const HowToPlay = () => {
             <div className="how-to-card__text">
               <h3>種類別の戦略</h3>
               <ul className="how-to-list">
-                <li><strong>パワー型：</strong>相手に直撃させてノックバックを活かす攻撃型プレイ</li>
-                <li><strong>防御型：</strong>相手の攻撃を受け切り、長期戦で相手を疲弊させる</li>
-                <li><strong>スタミナ型：</strong>高い操作性で相手の周りを回り、場外リスクを狙う</li>
+                <li><strong>パワー型：</strong>相手に直撃させてノックバックを活かす一撃必殺型</li>
+                <li><strong>防御型：</strong>ダメージ・ノックバックをこらえ、相手を疲弊させる消耗戦型</li>
+                <li><strong>スタミナ型：</strong>高い機動力で立ち回り、相手を翻弄しながら機会を狙う機動戦型</li>
               </ul>
             </div>
           </section>
