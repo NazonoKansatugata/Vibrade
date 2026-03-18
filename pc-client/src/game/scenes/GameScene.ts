@@ -6,14 +6,15 @@ import type { GameStartPayload, PlayerInputPayload, LaunchBeyPayload } from '../
 const TICK_MS = 33
 const FRICTION = 0.98
 const ENERGY_DECAY = 0.05
-const BASE_ACCEL = 0.55
+const BASE_ACCEL = 0.9
 const BOOST_FORCE = 14.0
+const WEAK_TILT_THRESHOLD = 0.18
+const CENTER_PULL_FORCE = 0.28
 const COLLISION_RESTITUTION = 0.82
 const COLLISION_KNOCKBACK_BOOST = 1.45
 const MIN_COLLISION_KNOCKBACK = 2.0
 const WALL_RESTITUTION = 0.86
-const WALL_RINGOUT_IMMEDIATE_SPEED = 16.0
-const WALL_RINGOUT_RISK_SPEED_THRESHOLD = 9.5
+const OUTWARD_RISK_NORMALIZE_SPEED = 14.0
 const RINGOUT_RISK_DECAY = 0.055
 const COLLISION_RINGOUT_RISK_GAIN = 0.22
 const OUTWARD_RINGOUT_RISK_GAIN = 0.18
@@ -48,7 +49,7 @@ interface TypeTuning {
   knockbackResistMultiplier: number
   ringoutRiskGainMultiplier: number
   ringoutRiskDecayMultiplier: number
-  wallRingoutThresholdMultiplier: number
+  ringoutRiskTriggerMultiplier: number
   wallRiskRecoveryBonus: number
 }
 
@@ -64,7 +65,7 @@ const TYPE_TUNING: Record<BeyTypeKey, TypeTuning> = {
     knockbackResistMultiplier: 1,
     ringoutRiskGainMultiplier: 1,
     ringoutRiskDecayMultiplier: 1,
-    wallRingoutThresholdMultiplier: 1,
+    ringoutRiskTriggerMultiplier: 1,
     wallRiskRecoveryBonus: 1,
   },
   power: {
@@ -78,7 +79,7 @@ const TYPE_TUNING: Record<BeyTypeKey, TypeTuning> = {
     knockbackResistMultiplier: 0.92,
     ringoutRiskGainMultiplier: 1.18,
     ringoutRiskDecayMultiplier: 0.9,
-    wallRingoutThresholdMultiplier: 0.96,
+    ringoutRiskTriggerMultiplier: 0.95,
     wallRiskRecoveryBonus: 0.9,
   },
   defense: {
@@ -92,7 +93,7 @@ const TYPE_TUNING: Record<BeyTypeKey, TypeTuning> = {
     knockbackResistMultiplier: 1.3,
     ringoutRiskGainMultiplier: 0.75,
     ringoutRiskDecayMultiplier: 1.18,
-    wallRingoutThresholdMultiplier: 1.14,
+    ringoutRiskTriggerMultiplier: 1.18,
     wallRiskRecoveryBonus: 1.2,
   },
   weight: {
@@ -106,7 +107,7 @@ const TYPE_TUNING: Record<BeyTypeKey, TypeTuning> = {
     knockbackResistMultiplier: 1.08,
     ringoutRiskGainMultiplier: 0.82,
     ringoutRiskDecayMultiplier: 1.25,
-    wallRingoutThresholdMultiplier: 1.08,
+    ringoutRiskTriggerMultiplier: 1.1,
     wallRiskRecoveryBonus: 1.1,
   },
 }
@@ -659,13 +660,27 @@ class GameScene extends Phaser.Scene {
       const input = this.latestInputs.get(playerId)
       const tiltX = input?.tiltX ?? 0
       const tiltY = input?.tiltY ?? 0
+      const tiltMagnitude = Math.sqrt(tiltX * tiltX + tiltY * tiltY)
       const typeTuning = this.getTypeTuning(bey.beyType)
 
       const speedBeforeInput = Math.sqrt(bey.vx * bey.vx + bey.vy * bey.vy)
       const controlFactor = Math.max(0.3, 1 - bey.energy / 200)
-      const steeringAssist = Math.min(1, speedBeforeInput / 10)
+      const steeringAssist = Phaser.Math.Clamp(0.45 + speedBeforeInput / 14, 0.45, 1)
       bey.vx += tiltX * BASE_ACCEL * controlFactor * steeringAssist * typeTuning.controlAssistMultiplier
       bey.vy += tiltY * BASE_ACCEL * controlFactor * steeringAssist * typeTuning.controlAssistMultiplier
+
+      const weakTiltFactor = Phaser.Math.Clamp((WEAK_TILT_THRESHOLD - tiltMagnitude) / WEAK_TILT_THRESHOLD, 0, 1)
+      if (weakTiltFactor > 0) {
+        const distToCenter = Math.sqrt(bey.x * bey.x + bey.y * bey.y)
+        if (distToCenter > 1) {
+          const toCenterX = -bey.x / distToCenter
+          const toCenterY = -bey.y / distToCenter
+          const centerBias = 0.55 + Math.min(1.25, distToCenter / Math.max(1, this.arenaRadius))
+          const centerPull = CENTER_PULL_FORCE * weakTiltFactor * centerBias
+          bey.vx += toCenterX * centerPull
+          bey.vy += toCenterY * centerPull
+        }
+      }
 
       const speed = Math.sqrt(bey.vx * bey.vx + bey.vy * bey.vy)
       bey.attackAngle = (bey.attackAngle + bey.attackSpinRate * (0.8 + speed / 20)) % (Math.PI * 2)
@@ -801,8 +816,8 @@ class GameScene extends Phaser.Scene {
         const bDist = Math.max(1, Math.sqrt(b.x * b.x + b.y * b.y))
         const aOutwardSpeed = Math.max(0, (a.vx * a.x + a.vy * a.y) / aDist)
         const bOutwardSpeed = Math.max(0, (b.vx * b.x + b.vy * b.y) / bDist)
-        const aOutwardNorm = Phaser.Math.Clamp(aOutwardSpeed / WALL_RINGOUT_IMMEDIATE_SPEED, 0, 1)
-        const bOutwardNorm = Phaser.Math.Clamp(bOutwardSpeed / WALL_RINGOUT_IMMEDIATE_SPEED, 0, 1)
+        const aOutwardNorm = Phaser.Math.Clamp(aOutwardSpeed / OUTWARD_RISK_NORMALIZE_SPEED, 0, 1)
+        const bOutwardNorm = Phaser.Math.Clamp(bOutwardSpeed / OUTWARD_RISK_NORMALIZE_SPEED, 0, 1)
 
         const aRiskGain =
           (impactNorm * COLLISION_RINGOUT_RISK_GAIN
@@ -937,16 +952,10 @@ class GameScene extends Phaser.Scene {
     const ny = dist === 0 ? 0 : bey.y / dist
     const outwardSpeed = bey.vx * nx + bey.vy * ny
     const typeTuning = this.getTypeTuning(bey.beyType)
-    const immediateRingoutThreshold = WALL_RINGOUT_IMMEDIATE_SPEED * typeTuning.wallRingoutThresholdMultiplier
-    const riskRingoutSpeedThreshold = WALL_RINGOUT_RISK_SPEED_THRESHOLD * typeTuning.wallRingoutThresholdMultiplier
+    const ringoutRiskTrigger = RINGOUT_RISK_TRIGGER * typeTuning.ringoutRiskTriggerMultiplier
 
-    // 超高速で壁に突っ込んだ場合は、そのまま場外負け
-    if (outwardSpeed >= immediateRingoutThreshold) {
-      return 'ringout'
-    }
-
-    // 衝突で蓄積したリスクが高い状態で外向き速度が十分なら場外
-    if (bey.ringoutRisk >= RINGOUT_RISK_TRIGGER && outwardSpeed >= riskRingoutSpeedThreshold) {
+    // 衝突で蓄積したリスクが十分高く、壁へ押し出される方向なら場外
+    if (bey.ringoutRisk >= ringoutRiskTrigger && outwardSpeed > 0.35) {
       return 'ringout'
     }
 
