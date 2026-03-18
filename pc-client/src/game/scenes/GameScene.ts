@@ -27,8 +27,9 @@ const COLLISION_RINGOUT_RISK_GAIN = 0.24
 const OUTWARD_RINGOUT_RISK_GAIN = 0.18
 const RINGOUT_RISK_TRIGGER = 0.56
 const RINGOUT_MIN_OUTWARD_SPEED = 2.5
-const RINGOUT_SPEED_NORMALIZE = 6.5
-const RINGOUT_LOW_SPEED_TRIGGER_BONUS = 0.2
+const RINGOUT_SPEED_NORMALIZE = 7.6
+const RINGOUT_LOW_SPEED_TRIGGER_BONUS = 0.14
+const RINGOUT_SPEED_CURVE_EXPONENT = 1.4
 const BASE_DAMAGE = 4
 const IMPACT_MULTIPLIER = 0.8
 const BASE_ENERGY = 300
@@ -1001,7 +1002,9 @@ class GameScene extends Phaser.Scene {
         0,
         1,
       )
-      const ringoutRiskTriggerEffective = baseRingoutRiskTrigger + RINGOUT_LOW_SPEED_TRIGGER_BONUS * (1 - speedNorm)
+      // 速度依存は中速域で急に効きすぎないよう、カーブを緩やかにする
+      const speedCurve = Math.pow(speedNorm, RINGOUT_SPEED_CURVE_EXPONENT)
+      const ringoutRiskTriggerEffective = baseRingoutRiskTrigger + RINGOUT_LOW_SPEED_TRIGGER_BONUS * (1 - speedCurve)
 
       // 高速ほど要求リスクを下げ、低速ほど要求リスクを上げる
       if (bey.ringoutRisk >= ringoutRiskTriggerEffective) {
