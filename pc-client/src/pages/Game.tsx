@@ -4,6 +4,7 @@ import { useGameSocket } from '../hooks/useGameSocket'
 import GameCanvas from '../components/GameCanvas'
 import GameStatus from '../components/GameStatus'
 import QRDisplay from '../components/QRDisplay'
+import GameResultOverlay from '../components/GameResultOverlay'
 import { useDemoGameState } from '../hooks/useDemoGameState'
 import type { GameState } from '../types'
 import type { CollisionEventPayload } from '../game/scenes/GameScene'
@@ -188,6 +189,13 @@ const Game = () => {
           retrySeed={retrySeed}
         />
       </main>
+
+      {gameState?.status === 'ended' && (
+        <GameResultOverlay
+          gameState={gameState}
+          onRetry={handleRetry}
+        />
+      )}
     </div>
   )
 }
