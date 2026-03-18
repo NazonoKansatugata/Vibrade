@@ -192,13 +192,52 @@ class GameScene extends Phaser.Scene {
     this.countdownText.setScale(scale)
     this.countdownText.setVisible(true)
 
-    // ポップアップアニメーション
+    const centerX = this.scale.width / 2
+    const centerY = this.scale.height / 2
+
+    // 初期位置を左画面外に設定
+    this.countdownText.setPosition(centerX - 800, centerY)
+    this.countdownText.setAlpha(0)
+
+    const isShoot = state === 'SHOOT'
+
+    // 左から中央へカットイン
     this.tweens.add({
       targets: this.countdownText,
-      scale: scale * 1.5,
-      alpha: { from: 1, to: 0.8 },
-      duration: 200,
-      yoyo: true,
+      x: centerX,
+      alpha: 1,
+      duration: 250,
+      ease: 'Cubic.out',
+      onComplete: () => {
+        if (isShoot) {
+          // SHOOTの場合は中央で待機（パルス演出）
+          this.tweens.add({
+            targets: this.countdownText,
+            scale: scale * 1.1,
+            duration: 500,
+            yoyo: true,
+            repeat: -1
+          })
+          return
+        }
+
+        // それ以外（3, 2, 1, GO）は中央で静止した後、右へ抜ける
+        this.tweens.add({
+          targets: this.countdownText,
+          x: centerX + 50,
+          duration: 400,
+          ease: 'Linear',
+          onComplete: () => {
+             this.tweens.add({
+               targets: this.countdownText,
+               x: centerX + 800,
+               alpha: 0,
+               duration: 250,
+               ease: 'Cubic.in'
+             })
+          }
+        })
+      }
     })
   }
 
@@ -207,10 +246,21 @@ class GameScene extends Phaser.Scene {
     this.countdownState = 'NONE'
     if (this.countdownText) {
       this.tweens.killTweensOf(this.countdownText)
-      this.countdownText.setText('')
-      this.countdownText.setAlpha(1)
-      this.countdownText.setScale(1)
-      this.countdownText.setVisible(false)
+      
+      // 右へフェードアウトしながら抜ける
+      this.tweens.add({
+        targets: this.countdownText,
+        x: (this.scale.width / 2) + 800,
+        alpha: 0,
+        duration: 400,
+        ease: 'Cubic.in',
+        onComplete: () => {
+          this.countdownText?.setText('')
+          this.countdownText?.setAlpha(1)
+          this.countdownText?.setScale(1)
+          this.countdownText?.setVisible(false)
+        }
+      })
     }
 
     const totalPlayers = this.runtimeBeys.size
