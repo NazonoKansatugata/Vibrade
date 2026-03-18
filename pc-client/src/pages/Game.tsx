@@ -127,17 +127,9 @@ const Game = () => {
       {specialFxPulse > 0 && (
         <div
           key={specialFxPulse}
-          className="pointer-events-none"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 120,
-            background: 'radial-gradient(circle at 50% 50%, rgba(239, 68, 68, 0.38), rgba(245, 158, 11, 0.15) 42%, rgba(0, 0, 0, 0) 70%)',
-            animation: 'specialStrikeFlash 900ms ease-out forwards',
-          }}
+          className="special-rainbow-overlay"
         />
       )}
-      <style>{`@keyframes specialStrikeFlash { from { opacity: 0.95; } 45% { opacity: 0.6; } to { opacity: 0; } }`}</style>
 
       <aside className="game-page__sidebar">
         <GameStatus

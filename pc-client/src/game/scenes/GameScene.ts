@@ -12,7 +12,7 @@ const TILT_SMOOTHING = 0.28
 const WEAK_TILT_THRESHOLD = 0.18
 const CENTER_PULL_FORCE = 0.28
 const SPECIAL_ATTACK_MIN_ACTIVATION_SPEED = 7.5
-const SPECIAL_ATTACK_WINDOW_TICKS = 18
+const SPECIAL_ATTACK_WINDOW_TICKS = 30 // 1秒間に変更
 const SPECIAL_ATTACK_BASE_BONUS_DAMAGE = 6.5
 const SPECIAL_ATTACK_MAX_BONUS_DAMAGE = 13
 const COLLISION_RESTITUTION = 0.82
@@ -173,7 +173,6 @@ class GameScene extends Phaser.Scene {
   private countdownState: '3' | '2' | '1' | 'GO' | 'SHOOT' | 'NONE' = 'NONE'
   private lastCountdownUpdateAt: number = 0
   private lastCollisionHapticAt = new Map<string, number>()
-  private specialAttackFlashTicks: number = 0
 
   constructor(
     roomId: string,
@@ -210,17 +209,16 @@ class GameScene extends Phaser.Scene {
   update(time: number, delta: number) {
     this.beySprites.forEach((bey) => bey.tick())
 
-    if (this.specialAttackFlashTicks > 0) {
-      this.specialAttackFlashTicks--
-      // 1秒間に15回色を変える (1000ms / 15 = 約66.6ms ごとに更新)
+    // 既存のBeyごとのスペシャル状態をチェックして背景を切り替える
+    const isAnyBeySpecial = Array.from(this.runtimeBeys.values()).some((b) => b.isActive && b.specialAttackTicks > 0)
+    if (isAnyBeySpecial) {
       const step = Math.floor(this.game.loop.time / (1000 / 15))
-      const hue = (step * 0.23) % 1 // 各ステップで大きく色を変える
+      const hue = (step * 0.23) % 1
       const color = Phaser.Display.Color.HSLToColor(hue, 1, 0.5)
       this.cameras.main.setBackgroundColor(color.color)
-      
-      if (this.specialAttackFlashTicks === 0) {
-        this.cameras.main.setBackgroundColor('#0f172a')
-      }
+    } else {
+      // スペシャル中でない場合はデフォルト色に戻す
+      this.cameras.main.setBackgroundColor('#0f172a')
     }
 
     if (!this.isGameActive) {
@@ -612,7 +610,6 @@ class GameScene extends Phaser.Scene {
       )
       bey.specialAttackTicks = Math.max(bey.specialAttackTicks, SPECIAL_ATTACK_WINDOW_TICKS)
       bey.specialAttackBonusDamage = Math.max(bey.specialAttackBonusDamage, bonusDamage)
-      this.triggerSpecialAttack()
     }
 
     // 最大速度制限は simulateTick で行われるが、瞬間的に超えるのは許容（あるいはここで軽くキャップ）
@@ -659,10 +656,6 @@ class GameScene extends Phaser.Scene {
     this.countdownText.setOrigin(0.5)
     this.countdownText.setVisible(false)
     this.countdownText.setDepth(100)
-  }
-
-  public triggerSpecialAttack() {
-    this.specialAttackFlashTicks = 30 // Approx 1 second at 33ms/tick
   }
 
   private renderGameState() {
