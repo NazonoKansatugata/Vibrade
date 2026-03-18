@@ -12,7 +12,12 @@ const COLLISION_RESTITUTION = 0.82
 const COLLISION_KNOCKBACK_BOOST = 1.45
 const MIN_COLLISION_KNOCKBACK = 2.0
 const WALL_RESTITUTION = 0.86
-const WALL_RINGOUT_SPEED_THRESHOLD = 13.5
+const WALL_RINGOUT_IMMEDIATE_SPEED = 16.0
+const WALL_RINGOUT_RISK_SPEED_THRESHOLD = 9.5
+const RINGOUT_RISK_DECAY = 0.055
+const COLLISION_RINGOUT_RISK_GAIN = 0.22
+const OUTWARD_RINGOUT_RISK_GAIN = 0.18
+const RINGOUT_RISK_TRIGGER = 0.52
 const BASE_DAMAGE = 4
 const IMPACT_MULTIPLIER = 0.8
 const BASE_ENERGY = 100
@@ -45,6 +50,7 @@ interface RuntimeBey {
   energy: number
   isActive: boolean
   radius: number
+  ringoutRisk: number
   attackAngle: number
   attackSpinRate: number
   launchTime?: number
@@ -292,6 +298,7 @@ class GameScene extends Phaser.Scene {
         energy: 100,
         isActive: true,
         radius: BEY_RADIUS,
+        ringoutRisk: 0,
         attackAngle: ((index * Math.PI) / 2) % (Math.PI * 2),
         attackSpinRate: 0.18 + (index % 3) * 0.03,
         launchTime: undefined,
@@ -488,6 +495,7 @@ class GameScene extends Phaser.Scene {
       bey.y += bey.vy
       bey.vx *= FRICTION
       bey.vy *= FRICTION
+      bey.ringoutRisk = Math.max(0, bey.ringoutRisk - RINGOUT_RISK_DECAY)
 
       bey.energy = Math.max(0, bey.energy - ENERGY_DECAY)
 
@@ -568,8 +576,8 @@ class GameScene extends Phaser.Scene {
         b.x += nx * correction
         b.y += ny * correction
 
-        const impact = knockbackStrength
-  this.emitCollisionHaptic([a.playerId, b.playerId], 'bey')
+          const impact = knockbackStrength
+          this.emitCollisionHaptic([a.playerId, b.playerId], 'bey')
 
         const aAttackX = Math.cos(a.attackAngle)
         const aAttackY = Math.sin(a.attackAngle)
@@ -605,6 +613,27 @@ class GameScene extends Phaser.Scene {
           b.vx += bonus * ATTACK_POINT_SELF_RECOIL * nx
           b.vy += bonus * ATTACK_POINT_SELF_RECOIL * ny
         }
+
+        const impactNorm = Phaser.Math.Clamp((impact - MIN_COLLISION_KNOCKBACK) / 10, 0, 1)
+        const aDist = Math.max(1, Math.sqrt(a.x * a.x + a.y * a.y))
+        const bDist = Math.max(1, Math.sqrt(b.x * b.x + b.y * b.y))
+        const aOutwardSpeed = Math.max(0, (a.vx * a.x + a.vy * a.y) / aDist)
+        const bOutwardSpeed = Math.max(0, (b.vx * b.x + b.vy * b.y) / bDist)
+        const aOutwardNorm = Phaser.Math.Clamp(aOutwardSpeed / WALL_RINGOUT_IMMEDIATE_SPEED, 0, 1)
+        const bOutwardNorm = Phaser.Math.Clamp(bOutwardSpeed / WALL_RINGOUT_IMMEDIATE_SPEED, 0, 1)
+
+        const aRiskGain =
+          impactNorm * COLLISION_RINGOUT_RISK_GAIN
+          + aOutwardNorm * OUTWARD_RINGOUT_RISK_GAIN
+          + (bCriticalHit ? 0.08 : 0)
+        const bRiskGain =
+          impactNorm * COLLISION_RINGOUT_RISK_GAIN
+          + bOutwardNorm * OUTWARD_RINGOUT_RISK_GAIN
+          + (aCriticalHit ? 0.08 : 0)
+
+        a.ringoutRisk = Phaser.Math.Clamp(a.ringoutRisk + aRiskGain, 0, 1)
+        b.ringoutRisk = Phaser.Math.Clamp(b.ringoutRisk + bRiskGain, 0, 1)
+
         const aForwardSpeed = Math.max(0, a.vx * nx + a.vy * ny)
         const bForwardSpeed = Math.max(0, -(b.vx * nx + b.vy * ny))
         const totalForwardSpeed = Math.max(0.2, aForwardSpeed + bForwardSpeed)
@@ -724,8 +753,13 @@ class GameScene extends Phaser.Scene {
     const ny = dist === 0 ? 0 : bey.y / dist
     const outwardSpeed = bey.vx * nx + bey.vy * ny
 
-    // 高速で壁に突っ込んだ場合は、そのまま場外負けになる
-    if (outwardSpeed >= WALL_RINGOUT_SPEED_THRESHOLD) {
+    // 超高速で壁に突っ込んだ場合は、そのまま場外負け
+    if (outwardSpeed >= WALL_RINGOUT_IMMEDIATE_SPEED) {
+      return 'ringout'
+    }
+
+    // 衝突で蓄積したリスクが高い状態で外向き速度が十分なら場外
+    if (bey.ringoutRisk >= RINGOUT_RISK_TRIGGER && outwardSpeed >= WALL_RINGOUT_RISK_SPEED_THRESHOLD) {
       return 'ringout'
     }
 
@@ -737,6 +771,9 @@ class GameScene extends Phaser.Scene {
       bey.vx -= (1 + WALL_RESTITUTION) * outwardSpeed * nx
       bey.vy -= (1 + WALL_RESTITUTION) * outwardSpeed * ny
     }
+
+    // 壁反射で踏みとどまった時は、場外リスクを少しだけ下げる
+    bey.ringoutRisk = Math.max(0, bey.ringoutRisk - 0.12)
 
     return 'wall'
   }
