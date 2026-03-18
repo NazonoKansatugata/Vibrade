@@ -50,11 +50,48 @@ const GameController = () => {
     return ctx
   }, [])
 
-  const playImpactTone = useCallback((intent: 'impact' | 'launch') => {
+  const playImpactTone = useCallback((intent: 'impact' | 'launch' | 'special') => {
     const ctx = ensureAudioContext()
     if (!ctx) return
 
     const now = ctx.currentTime
+
+    if (intent === 'special') {
+      const carrier = ctx.createOscillator()
+      const harmonics = ctx.createOscillator()
+      const gain = ctx.createGain()
+      const sweepGain = ctx.createGain()
+
+      carrier.type = 'sawtooth'
+      harmonics.type = 'triangle'
+      carrier.frequency.setValueAtTime(170, now)
+      carrier.frequency.exponentialRampToValueAtTime(240, now + 0.55)
+      carrier.frequency.exponentialRampToValueAtTime(150, now + 1.35)
+      harmonics.frequency.setValueAtTime(340, now)
+      harmonics.frequency.exponentialRampToValueAtTime(480, now + 0.6)
+      harmonics.frequency.exponentialRampToValueAtTime(300, now + 1.35)
+
+      gain.gain.setValueAtTime(0.0001, now)
+      gain.gain.exponentialRampToValueAtTime(0.09, now + 0.05)
+      gain.gain.exponentialRampToValueAtTime(0.07, now + 0.7)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.45)
+
+      sweepGain.gain.setValueAtTime(0.0001, now)
+      sweepGain.gain.exponentialRampToValueAtTime(0.045, now + 0.08)
+      sweepGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.4)
+
+      carrier.connect(gain)
+      harmonics.connect(sweepGain)
+      gain.connect(ctx.destination)
+      sweepGain.connect(ctx.destination)
+
+      carrier.start(now)
+      harmonics.start(now)
+      carrier.stop(now + 1.48)
+      harmonics.stop(now + 1.48)
+      return
+    }
+
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
 
@@ -170,12 +207,17 @@ const GameController = () => {
           key={fxPulse}
           className="pointer-events-none fixed inset-0 z-20"
           style={{
-            background: lastFxIntent === 'launch' ? 'rgba(239, 68, 68, 0.24)' : 'rgba(59, 130, 246, 0.2)',
-            animation: 'vibradeFxFlash 220ms ease-out forwards',
+            background:
+              lastFxIntent === 'special'
+                ? 'rgba(245, 158, 11, 0.34)'
+                : lastFxIntent === 'launch'
+                  ? 'rgba(239, 68, 68, 0.24)'
+                  : 'rgba(59, 130, 246, 0.2)',
+            animation: lastFxIntent === 'special' ? 'vibradeFxFlashSpecial 1200ms ease-out forwards' : 'vibradeFxFlash 220ms ease-out forwards',
           }}
         />
       )}
-      <style>{`@keyframes vibradeFxFlash { from { opacity: 0.95; } to { opacity: 0; } }`}</style>
+      <style>{`@keyframes vibradeFxFlash { from { opacity: 0.95; } to { opacity: 0; } } @keyframes vibradeFxFlashSpecial { from { opacity: 0.95; } 45% { opacity: 0.55; } to { opacity: 0; } }`}</style>
 
       {/* Ambient background */}
       <div className="fixed inset-0 pointer-events-none">

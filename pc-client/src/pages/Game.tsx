@@ -22,6 +22,8 @@ const Game = () => {
   // LAUNCH_BEY 受信フラッシュ表示（2秒間表示）
   const [actionFlash, setActionFlash] = useState<{ playerSocketId: string; power: number } | null>(null)
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [specialFxPulse, setSpecialFxPulse] = useState(0)
+  const specialFxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const { latestGameStart, latestPlayerInput, players, triggerVibrateTargets, latestLaunchBey, startGame, endRoom } = useGameSocket(resolvedRoomId, {
     onLaunch: (payload) => {
@@ -76,7 +78,23 @@ const Game = () => {
       return
     }
 
-    const pattern = payload.kind === 'wall' ? [90] : [120, 60, 120]
+    const pattern =
+      payload.kind === 'special'
+        ? [280, 120, 260, 120, 260, 120, 260]
+        : payload.kind === 'wall'
+          ? [90]
+          : [120, 60, 120]
+
+    if (payload.kind === 'special') {
+      setSpecialFxPulse((prev) => prev + 1)
+      if (specialFxTimerRef.current) {
+        clearTimeout(specialFxTimerRef.current)
+      }
+      specialFxTimerRef.current = setTimeout(() => {
+        setSpecialFxPulse(0)
+      }, 900)
+    }
+
     triggerVibrateTargetsRef.current(targetSocketIds, pattern)
   }, [])
 
@@ -90,6 +108,12 @@ const Game = () => {
 
   useEffect(() => {
     return () => {
+      if (flashTimerRef.current) {
+        clearTimeout(flashTimerRef.current)
+      }
+      if (specialFxTimerRef.current) {
+        clearTimeout(specialFxTimerRef.current)
+      }
       if (!hasEndedRoomRef.current) {
         endRoom()
         hasEndedRoomRef.current = true
@@ -99,6 +123,21 @@ const Game = () => {
 
   return (
     <div className="game-page">
+      {specialFxPulse > 0 && (
+        <div
+          key={specialFxPulse}
+          className="pointer-events-none"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 120,
+            background: 'radial-gradient(circle at 50% 50%, rgba(239, 68, 68, 0.38), rgba(245, 158, 11, 0.15) 42%, rgba(0, 0, 0, 0) 70%)',
+            animation: 'specialStrikeFlash 900ms ease-out forwards',
+          }}
+        />
+      )}
+      <style>{`@keyframes specialStrikeFlash { from { opacity: 0.95; } 45% { opacity: 0.6; } to { opacity: 0; } }`}</style>
+
       <aside className="game-page__sidebar">
         <GameStatus
           gameState={gameState}
