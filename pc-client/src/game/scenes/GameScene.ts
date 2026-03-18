@@ -749,7 +749,7 @@ class GameScene extends Phaser.Scene {
 
         // 互いに離れる向きでも重なっている場合は最小ノックバックで押し返す
         const closingSpeed = Math.max(0, -velAlongNormal)
-        let knockbackStrength = Math.max(
+        const knockbackStrength = Math.max(
           MIN_COLLISION_KNOCKBACK,
           ((1 + COLLISION_RESTITUTION) * closingSpeed) / 2 * COLLISION_KNOCKBACK_BOOST,
         )
@@ -838,13 +838,13 @@ class GameScene extends Phaser.Scene {
         const totalForwardSpeed = Math.max(0.2, aForwardSpeed + bForwardSpeed)
         const baseImpactDamage = BASE_DAMAGE + impact * IMPACT_MULTIPLIER
 
-        let damageToA =
+        const damageToA =
           baseImpactDamage
           * (0.3 + 1.15 * (bForwardSpeed / totalForwardSpeed))
           * bType.damageDealtMultiplier
           * aType.damageTakenMultiplier
           * (bCriticalHit ? ATTACK_POINT_DAMAGE_MULTIPLIER : 1)
-        let damageToB =
+        const damageToB =
           baseImpactDamage
           * (0.3 + 1.15 * (aForwardSpeed / totalForwardSpeed))
           * aType.damageDealtMultiplier
