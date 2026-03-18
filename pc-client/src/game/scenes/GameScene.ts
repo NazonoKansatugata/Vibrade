@@ -21,9 +21,12 @@ const MIN_COLLISION_KNOCKBACK = 2.0
 const WALL_RESTITUTION = 0.86
 const OUTWARD_RISK_NORMALIZE_SPEED = 11.0
 const RINGOUT_RISK_DECAY = 0.04
-const COLLISION_RINGOUT_RISK_GAIN = 0.3
-const OUTWARD_RINGOUT_RISK_GAIN = 0.24
-const RINGOUT_RISK_TRIGGER = 0.4
+const COLLISION_RINGOUT_RISK_GAIN = 0.24
+const OUTWARD_RINGOUT_RISK_GAIN = 0.18
+const RINGOUT_RISK_TRIGGER = 0.56
+const RINGOUT_MIN_OUTWARD_SPEED = 1.8
+const RINGOUT_SPEED_NORMALIZE = 6.5
+const RINGOUT_LOW_SPEED_TRIGGER_BONUS = 0.2
 const BASE_DAMAGE = 4
 const IMPACT_MULTIPLIER = 0.8
 const BASE_ENERGY = 300
@@ -1017,11 +1020,22 @@ class GameScene extends Phaser.Scene {
     const ny = dist === 0 ? 0 : bey.y / dist
     const outwardSpeed = bey.vx * nx + bey.vy * ny
     const typeTuning = this.getTypeTuning(bey.beyType)
-    const ringoutRiskTrigger = RINGOUT_RISK_TRIGGER * typeTuning.ringoutRiskTriggerMultiplier
+    const baseRingoutRiskTrigger = RINGOUT_RISK_TRIGGER * typeTuning.ringoutRiskTriggerMultiplier
 
-    // 衝突で蓄積したリスクが十分高く、壁へ押し出される方向なら場外
-    if (bey.ringoutRisk >= ringoutRiskTrigger && outwardSpeed > 0.18) {
-      return 'ringout'
+    // 低速では絶対に場外にしない（速度ゲート）
+    if (outwardSpeed >= RINGOUT_MIN_OUTWARD_SPEED) {
+      const speedNorm = Phaser.Math.Clamp(
+        (outwardSpeed - RINGOUT_MIN_OUTWARD_SPEED)
+          / Math.max(0.1, RINGOUT_SPEED_NORMALIZE - RINGOUT_MIN_OUTWARD_SPEED),
+        0,
+        1,
+      )
+      const ringoutRiskTriggerEffective = baseRingoutRiskTrigger + RINGOUT_LOW_SPEED_TRIGGER_BONUS * (1 - speedNorm)
+
+      // 高速ほど要求リスクを下げ、低速ほど要求リスクを上げる
+      if (bey.ringoutRisk >= ringoutRiskTriggerEffective) {
+        return 'ringout'
+      }
     }
 
     // 通常は壁で反射して場内へ戻す
