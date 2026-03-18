@@ -56,11 +56,16 @@ export const useGameSocket = (roomIdHint?: string, options?: GameSocketOptions) 
   const [debugEvents, setDebugEvents] = useState<SocketDebugEvent[]>([]);
   const lastInputLogAt = useRef(0);
   const optionsRef = useRef(options);
+  const roomIdRef = useRef<string | null>(roomIdHint ?? null);
 
   // Update options ref so effect can access current callbacks without re-subscribing to socket
   useEffect(() => {
     optionsRef.current = options;
   }, [options]);
+
+  useEffect(() => {
+    roomIdRef.current = roomId;
+  }, [roomId]);
 
   const appendDebugEvent = (event: string, detail?: string) => {
     if (!ENABLE_SOCKET_TIMELINE) {
@@ -89,18 +94,33 @@ export const useGameSocket = (roomIdHint?: string, options?: GameSocketOptions) 
     };
     
     const onRoomCreated = (data: { roomId: string }) => {
+      roomIdRef.current = data.roomId;
       setRoomId(data.roomId);
+      setPlayers([]);
+      setLatestGameStart(null);
       appendDebugEvent(ServerEvents.ROOM_CREATED, `roomId=${data.roomId}`);
     };
 
     const flexPlayerType = (data: PlayerListPayload) => {
+      const activeRoomId = roomIdRef.current || roomIdHint || null;
+      if (activeRoomId && data.roomId !== activeRoomId) {
+        appendDebugEvent(ServerEvents.PLAYER_LIST, `ignored roomId=${data.roomId}`);
+        return;
+      }
+
+      if (!activeRoomId) {
+        roomIdRef.current = data.roomId;
+        setRoomId(data.roomId);
+      }
+
       setPlayers(data.players);
-      appendDebugEvent(ServerEvents.PLAYER_LIST, `count=${data.players.length}`);
+      appendDebugEvent(ServerEvents.PLAYER_LIST, `roomId=${data.roomId} count=${data.players.length}`);
     };
 
     const onGameStart = (payload: GameStartPayload) => {
       const nextRoomId = payload?.roomId || roomIdHint || '';
       const nextPlayers = payload?.players || [];
+      roomIdRef.current = nextRoomId || null;
       setRoomId(nextRoomId ?? null);
       setPlayers(nextPlayers);
       setLatestGameStart({ roomId: nextRoomId, players: nextPlayers });
@@ -192,6 +212,21 @@ export const useGameSocket = (roomIdHint?: string, options?: GameSocketOptions) 
     gameSocket.triggerVibrate(roomId, targetSocketIds, pattern);
   }, [roomId]);
 
+  const endRoom = useCallback(() => {
+    if (!roomId) {
+      return;
+    }
+
+    appendDebugEvent('emit:endRoom', `roomId=${roomId}`);
+    gameSocket.endRoom(roomId);
+    roomIdRef.current = null;
+    setRoomId(null);
+    setPlayers([]);
+    setLatestGameStart(null);
+    setLatestPlayerInput(null);
+    setLatestPlayerInputs({});
+  }, [roomId]);
+
   return {
     isConnected,
     roomId,
@@ -206,5 +241,6 @@ export const useGameSocket = (roomIdHint?: string, options?: GameSocketOptions) 
     startGame,
     triggerVibrate,
     triggerVibrateTargets,
+    endRoom,
   };
 };

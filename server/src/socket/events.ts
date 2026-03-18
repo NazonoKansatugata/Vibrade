@@ -8,6 +8,7 @@ export const ClientEvents = {
   LAUNCH_BEY: 'launchBey',
   START_GAME: 'startGame',
   TRIGGER_VIBRATE: 'triggerVibrate',
+  END_ROOM: 'endRoom',
   DISCONNECT: 'disconnect'
 } as const;
 

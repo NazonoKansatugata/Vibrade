@@ -90,8 +90,10 @@ const GameController = () => {
     if (!ctx) return
     if (!isInteractionPrimed) {
       setIsInteractionPrimed(true)
+      // 初回タップ成功をユーザーが体感できるよう短い確認音を鳴らす
+      playImpactTone('impact')
     }
-  }, [ensureAudioContext, isInteractionPrimed])
+  }, [ensureAudioContext, isInteractionPrimed, playImpactTone])
 
   if (!roomId || !playerName) {
     return <Navigate to="/join" replace />
@@ -150,7 +152,11 @@ const GameController = () => {
       onPointerDown={handlePrimeInteraction}
     >
       {!isInteractionPrimed && (
-        <div className="fixed inset-0 z-30 bg-black/55 backdrop-blur-[2px] flex items-end justify-center pb-24 px-6">
+        <div
+          className="fixed inset-0 z-30 bg-black/55 backdrop-blur-[2px] flex items-end justify-center pb-24 px-6"
+          onTouchStart={handlePrimeInteraction}
+          onPointerDown={handlePrimeInteraction}
+        >
           <div className="w-full max-w-sm rounded-2xl border border-cyan-300/25 bg-slate-900/90 p-4 text-center shadow-[0_8px_30px_rgba(0,0,0,0.45)] animate-pulse">
             <p className="text-[10px] text-cyan-300/70 tracking-[0.2em] uppercase mb-2">Sound Ready</p>
             <p className="text-sm font-bold text-cyan-100">画面のどこかを1回タップして準備完了</p>
