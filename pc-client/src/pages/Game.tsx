@@ -84,15 +84,16 @@ const Game = () => {
   return (
     <div className="game-page">
       <aside className="game-page__sidebar">
-        <div className="game-page__qr-container" style={{ marginBottom: '24px', transform: 'scale(0.8)', transformOrigin: 'top left' }}>
-          <QRDisplay roomId={resolvedRoomId} />
-        </div>
         <GameStatus
           roomId={resolvedRoomId}
           gameState={gameState}
           canRetry={Boolean(effectiveGameStart)}
           onRetry={handleRetry}
         />
+
+        <div className="game-page__qr-container">
+          <QRDisplay roomId={resolvedRoomId} variant="compact" />
+        </div>
 
         {ENABLE_TILT_PANEL && (
           <div className="socket-debug-panel">
