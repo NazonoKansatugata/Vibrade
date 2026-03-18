@@ -24,7 +24,7 @@ const Game = () => {
   const [actionFlash, setActionFlash] = useState<{ playerSocketId: string; power: number } | null>(null)
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const { latestGameStart, latestPlayerInput, latestPlayerInputs, players, triggerVibrate, triggerVibrateTargets, latestLaunchBey, startGame } = useGameSocket(resolvedRoomId, {
+  const { latestGameStart, latestPlayerInput, latestPlayerInputs, players, triggerVibrate, triggerVibrateTargets, latestLaunchBey, startGame, endRoom } = useGameSocket(resolvedRoomId, {
     onLaunch: (payload) => {
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
       setActionFlash({ playerSocketId: payload.playerSocketId, power: payload.power })
@@ -38,6 +38,7 @@ const Game = () => {
   const effectivePlayersRef = useRef(players)
   const triggerVibrateTargetsRef = useRef(triggerVibrateTargets)
   const demoGameState = useDemoGameState(resolvedRoomId, ENABLE_DEMO_FALLBACK)
+  const hasEndedRoomRef = useRef(false)
   const gameState = sceneGameState ?? (ENABLE_DEMO_FALLBACK ? demoGameState : undefined)
   const effectiveGameStart = latestGameStart ?? initialGameStart
   const tiltRows = Object.values(latestPlayerInputs)
@@ -80,6 +81,23 @@ const Game = () => {
     const pattern = payload.kind === 'wall' ? [90] : [120, 60, 120]
     triggerVibrateTargetsRef.current(targetSocketIds, pattern)
   }, [])
+
+  const handleExit = useCallback(() => {
+    if (!hasEndedRoomRef.current) {
+      endRoom()
+      hasEndedRoomRef.current = true
+    }
+    navigate('/')
+  }, [endRoom, navigate])
+
+  useEffect(() => {
+    return () => {
+      if (!hasEndedRoomRef.current) {
+        endRoom()
+        hasEndedRoomRef.current = true
+      }
+    }
+  }, [endRoom])
 
   return (
     <div className="game-page">
@@ -142,7 +160,7 @@ const Game = () => {
 
         <button
           className="btn btn--secondary game-page__exit"
-          onClick={() => navigate('/')}
+          onClick={handleExit}
         >
           退出
         </button>

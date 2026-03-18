@@ -40,6 +40,11 @@ class GameSocket {
     this.socket.emit(ClientEvents.TRIGGER_VIBRATE, { roomId, targetSocketIds, pattern });
   }
 
+  endRoom(roomId: string) {
+    if (!this.socket || !this.socket.connected) return;
+    this.socket.emit(ClientEvents.END_ROOM, { roomId });
+  }
+
   on(event: string, callback: (...args: unknown[]) => void) {
     this.socket?.on(event, callback);
   }

@@ -21,6 +21,16 @@ class RoomManager {
   private rooms: Record<string, Room> = {};
   private disconnectTimeouts = new Map<string, NodeJS.Timeout>();
 
+  private clearDisconnectTimeoutsForRoom(room: Room) {
+    room.players.forEach((player) => {
+      const timeout = this.disconnectTimeouts.get(player.id);
+      if (timeout) {
+        clearTimeout(timeout);
+        this.disconnectTimeouts.delete(player.id);
+      }
+    });
+  }
+
   getPlayerContextBySocketId(socketId: string): { roomId: string; room: Room; player: Player } | null {
     for (const roomId in this.rooms) {
       const room = this.rooms[roomId];
@@ -128,6 +138,10 @@ class RoomManager {
   }
 
   removeRoom(roomId: string) {
+    const room = this.rooms[roomId];
+    if (room) {
+      this.clearDisconnectTimeoutsForRoom(room);
+    }
     delete this.rooms[roomId];
   }
 
@@ -135,11 +149,29 @@ class RoomManager {
     for (const roomId in this.rooms) {
       const room = this.rooms[roomId];
       if (room && room.hostSocketId === hostSocketId) {
+        this.clearDisconnectTimeoutsForRoom(room);
         delete this.rooms[roomId];
         return roomId;
       }
     }
     return null;
+  }
+
+  removeRoomsByHostId(hostSocketId: string): string[] {
+    const removedRoomIds: string[] = [];
+
+    for (const roomId in this.rooms) {
+      const room = this.rooms[roomId];
+      if (!room || room.hostSocketId !== hostSocketId) {
+        continue;
+      }
+
+      this.clearDisconnectTimeoutsForRoom(room);
+      delete this.rooms[roomId];
+      removedRoomIds.push(roomId);
+    }
+
+    return removedRoomIds;
   }
 
   getAllActiveRoomIds(): string[] {
