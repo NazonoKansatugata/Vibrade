@@ -255,7 +255,18 @@ class GameScene extends Phaser.Scene {
     this.countdownState = state
     if (!this.countdownText) return
 
+    // 前のカウントのアニメーションを即座に停止し、状態をリセット
     this.tweens.killTweensOf(this.countdownText)
+    if (this.countdownBg) {
+      this.tweens.killTweensOf(this.countdownBg)
+      this.countdownBg.setAlpha(0)
+      this.countdownBg.setVisible(false)
+    }
+    if (this.countdownBox) {
+      this.tweens.killTweensOf(this.countdownBox)
+      this.countdownBox.setAlpha(0)
+      this.countdownBox.setVisible(false)
+    }
 
     let text = ''
     let color = '#ffffff'
@@ -281,7 +292,6 @@ class GameScene extends Phaser.Scene {
 
     const isThree = state === '3'
 
-    // 背景演出の描画
     if (this.countdownBg) {
       this.countdownBg.clear()
       if (!isThree) {
@@ -304,10 +314,9 @@ class GameScene extends Phaser.Scene {
         this.countdownBg.lineTo(splitX - 150, height)
         this.countdownBg.closePath()
         this.countdownBg.fillPath()
+        
+        this.countdownBg.setVisible(true)
       }
-      
-      this.countdownBg.setAlpha(0)
-      this.countdownBg.setVisible(true)
     }
 
     // ボックス演出の描画
@@ -329,10 +338,9 @@ class GameScene extends Phaser.Scene {
         this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX + boxW / 2, centerY + boxH / 2, centerX + boxW / 2 - d, centerY + boxH / 2))
         this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX - boxW / 2 + d, centerY + boxH / 2, centerX - boxW / 2, centerY + boxH / 2))
         this.countdownBox.strokeLineShape(new Phaser.Geom.Line(centerX - boxW / 2, centerY + boxH / 2, centerX - boxW / 2, centerY + boxH / 2 - d))
+        
+        this.countdownBox.setVisible(true)
       }
-      
-      this.countdownBox.setAlpha(0)
-      this.countdownBox.setVisible(true)
     }
 
     const isShoot = state === 'SHOOT'
