@@ -4,13 +4,15 @@ import type { GameState } from '../../types'
 import type { GameStartPayload, PlayerInputPayload, LaunchBeyPayload } from '../../hooks/useGameSocket'
 
 const TICK_MS = 33
-const FRICTION = 0.98
+const FRICTION = 0.986
 const ENERGY_DECAY = 0.05
-const BASE_ACCEL = 0.9
-const BOOST_FORCE = 14.0
+const BASE_ACCEL = 1.2
+const BOOST_FORCE = 16.5
 const TILT_SMOOTHING = 0.28
 const WEAK_TILT_THRESHOLD = 0.18
-const CENTER_PULL_FORCE = 0.28
+const CENTER_PULL_FORCE = 0.35
+const LOW_SPEED_CENTER_PULL_THRESHOLD = 3.2
+const LOW_SPEED_CENTER_PULL_BONUS = 0.9
 const SPECIAL_ATTACK_MIN_ACTIVATION_SPEED = 7.5
 const SPECIAL_ATTACK_WINDOW_TICKS = 18
 const SPECIAL_ATTACK_BASE_BONUS_DAMAGE = 6.5
@@ -24,7 +26,7 @@ const RINGOUT_RISK_DECAY = 0.04
 const COLLISION_RINGOUT_RISK_GAIN = 0.24
 const OUTWARD_RINGOUT_RISK_GAIN = 0.18
 const RINGOUT_RISK_TRIGGER = 0.56
-const RINGOUT_MIN_OUTWARD_SPEED = 1.8
+const RINGOUT_MIN_OUTWARD_SPEED = 2.5
 const RINGOUT_SPEED_NORMALIZE = 6.5
 const RINGOUT_LOW_SPEED_TRIGGER_BONUS = 0.2
 const BASE_DAMAGE = 4
@@ -173,6 +175,7 @@ class GameScene extends Phaser.Scene {
   private countdownState: '3' | '2' | '1' | 'GO' | 'SHOOT' | 'NONE' = 'NONE'
   private lastCountdownUpdateAt: number = 0
   private lastCollisionHapticAt = new Map<string, number>()
+  private specialAttackFlashTicks: number = 0
 
   constructor(
     roomId: string,
@@ -208,6 +211,19 @@ class GameScene extends Phaser.Scene {
 
   update(time: number, delta: number) {
     this.beySprites.forEach((bey) => bey.tick())
+
+    if (this.specialAttackFlashTicks > 0) {
+      this.specialAttackFlashTicks--
+      // 1秒間に15回色を変える (1000ms / 15 = 約66.6ms ごとに更新)
+      const step = Math.floor(this.game.loop.time / (1000 / 15))
+      const hue = (step * 0.23) % 1 // 各ステップで大きく色を変える
+      const color = Phaser.Display.Color.HSLToColor(hue, 1, 0.5)
+      this.cameras.main.setBackgroundColor(color.color)
+      
+      if (this.specialAttackFlashTicks === 0) {
+        this.cameras.main.setBackgroundColor('#0f172a')
+      }
+    }
 
     if (!this.isGameActive) {
       return
@@ -598,6 +614,7 @@ class GameScene extends Phaser.Scene {
       )
       bey.specialAttackTicks = Math.max(bey.specialAttackTicks, SPECIAL_ATTACK_WINDOW_TICKS)
       bey.specialAttackBonusDamage = Math.max(bey.specialAttackBonusDamage, bonusDamage)
+      this.triggerSpecialAttack()
     }
 
     // 最大速度制限は simulateTick で行われるが、瞬間的に超えるのは許容（あるいはここで軽くキャップ）
@@ -644,6 +661,10 @@ class GameScene extends Phaser.Scene {
     this.countdownText.setOrigin(0.5)
     this.countdownText.setVisible(false)
     this.countdownText.setDepth(100)
+  }
+
+  public triggerSpecialAttack() {
+    this.specialAttackFlashTicks = 30 // Approx 1 second at 33ms/tick
   }
 
   private renderGameState() {
@@ -715,7 +736,13 @@ class GameScene extends Phaser.Scene {
           const toCenterX = -bey.x / distToCenter
           const toCenterY = -bey.y / distToCenter
           const centerBias = 0.55 + Math.min(1.25, distToCenter / Math.max(1, this.arenaRadius))
-          const centerPull = CENTER_PULL_FORCE * weakTiltFactor * centerBias
+          const lowSpeedFactor = Phaser.Math.Clamp(
+            (LOW_SPEED_CENTER_PULL_THRESHOLD - speedBeforeInput) / LOW_SPEED_CENTER_PULL_THRESHOLD,
+            0,
+            1,
+          )
+          const centerPull =
+            CENTER_PULL_FORCE * weakTiltFactor * centerBias * (1 + lowSpeedFactor * LOW_SPEED_CENTER_PULL_BONUS)
           bey.vx += toCenterX * centerPull
           bey.vy += toCenterY * centerPull
         }
