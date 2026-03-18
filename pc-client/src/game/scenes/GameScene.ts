@@ -62,8 +62,6 @@ class GameScene extends Phaser.Scene {
   private unitToPixel: number = 1
   private arena?: Phaser.GameObjects.Arc
   private arenaRing?: Phaser.GameObjects.Arc
-  private roomLabel?: Phaser.GameObjects.Text
-  private infoLabel?: Phaser.GameObjects.Text
   private beySprites = new Map<string, BeySprite>()
   private players: GameState['players'] = []
   private runtimeBeys = new Map<string, RuntimeBey>()
@@ -96,8 +94,7 @@ class GameScene extends Phaser.Scene {
   create() {
     this.isSceneReady = true
     this.cameras.main.setBackgroundColor('#0f172a')
-    this.buildScene(this.scale.width, this.scale.height)
-    this.infoLabel?.setText('Waiting for host to start')
+    this.buildScene(this.game.canvas.width, this.game.canvas.height)
 
     if (this.pendingStartPayload) {
       const payload = this.pendingStartPayload
@@ -373,8 +370,6 @@ class GameScene extends Phaser.Scene {
   private buildScene(width: number, height: number) {
     this.arena?.destroy()
     this.arenaRing?.destroy()
-    this.roomLabel?.destroy()
-    this.infoLabel?.destroy()
     this.countdownText?.destroy()
 
     const centerX = width / 2
@@ -387,21 +382,11 @@ class GameScene extends Phaser.Scene {
     // 現在の人数に応じた描画半径
     const currentArenaPixelRadius = this.arenaRadius * this.unitToPixel
 
-    this.add.rectangle(centerX, centerY, width, height, 0x0b1120, 1)
-
     this.arena = this.add.circle(centerX, centerY, currentArenaPixelRadius, 0x132238, 0.95)
     this.arena.setStrokeStyle(8, 0x38bdf8, 0.35)
 
     this.arenaRing = this.add.circle(centerX, centerY, currentArenaPixelRadius * 0.72, 0x0f172a, 0)
     this.arenaRing.setStrokeStyle(3, 0xe2e8f0, 0.25)
-
-    this.roomLabel = this.add.text(centerX, 36, `ROOM ${this.roomId}`, {
-      fontFamily: 'Segoe UI',
-      fontSize: '24px',
-      color: '#e2e8f0',
-      fontStyle: 'bold',
-    })
-    this.roomLabel.setOrigin(0.5, 0)
 
     this.countdownText = this.add.text(centerX, centerY, '', {
       fontFamily: 'Segoe UI',
@@ -413,22 +398,11 @@ class GameScene extends Phaser.Scene {
     this.countdownText.setVisible(false)
     this.countdownText.setDepth(100)
 
-    this.infoLabel = this.add.text(centerX, height - 44, 'Phaser minimal scene: waiting for server gameState', {
-      fontFamily: 'Segoe UI',
-      fontSize: '18px',
-      color: '#94a3b8',
-    })
-    this.infoLabel.setOrigin(0.5, 1)
+    this.countdownText.setDepth(100)
   }
 
   private renderGameState() {
     const gameState = this.buildGameState()
-
-    this.infoLabel?.setText(
-      gameState.isGameActive
-        ? `Tick ${gameState.tick} • ${gameState.beys.length} beys rendering`
-        : 'Waiting for players to start',
-    )
 
     const activeIds = new Set(gameState.beys.map((bey) => bey.id))
 

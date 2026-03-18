@@ -11,7 +11,6 @@ import type { GameStartPayload } from '../hooks/useGameSocket'
 import '../styles/game.css'
 
 const ENABLE_DEMO_FALLBACK = import.meta.env.VITE_USE_DEMO_GAMESTATE === 'true'
-const ENABLE_TILT_PANEL = true
 
 const Game = () => {
   const { roomId } = useParams<{ roomId: string }>()
@@ -24,7 +23,7 @@ const Game = () => {
   const [actionFlash, setActionFlash] = useState<{ playerSocketId: string; power: number } | null>(null)
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const { latestGameStart, latestPlayerInput, latestPlayerInputs, players, triggerVibrate, triggerVibrateTargets, latestLaunchBey, startGame, endRoom } = useGameSocket(resolvedRoomId, {
+  const { latestGameStart, latestPlayerInput, players, triggerVibrateTargets, latestLaunchBey, startGame, endRoom } = useGameSocket(resolvedRoomId, {
     onLaunch: (payload) => {
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
       setActionFlash({ playerSocketId: payload.playerSocketId, power: payload.power })
@@ -41,7 +40,6 @@ const Game = () => {
   const hasEndedRoomRef = useRef(false)
   const gameState = sceneGameState ?? (ENABLE_DEMO_FALLBACK ? demoGameState : undefined)
   const effectiveGameStart = latestGameStart ?? initialGameStart
-  const tiltRows = Object.values(latestPlayerInputs)
 
   useEffect(() => {
     playersRef.current = players
@@ -103,7 +101,6 @@ const Game = () => {
     <div className="game-page">
       <aside className="game-page__sidebar">
         <GameStatus
-          roomId={resolvedRoomId}
           gameState={gameState}
           canRetry={Boolean(effectiveGameStart)}
           onRetry={handleRetry}
@@ -113,25 +110,6 @@ const Game = () => {
           <QRDisplay roomId={resolvedRoomId} variant="compact" />
         </div>
 
-        {ENABLE_TILT_PANEL && (
-          <div className="socket-debug-panel">
-            <p className="socket-debug-panel__title">Player Tilt (x, y, z)</p>
-            <ul className="socket-debug-panel__list">
-              {tiltRows.length === 0 && <li>入力待機中...</li>}
-              {tiltRows.map((row) => {
-                const player = players.find((p) => p.id === row.playerId)
-                const label = player?.name ?? row.playerId.slice(0, 6)
-
-                return (
-                  <li key={row.playerId}>
-                    <span>{label}</span>{' '}
-                    x:{row.tiltX.toFixed(2)} y:{row.tiltY.toFixed(2)} z:{(0).toFixed(2)}
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
-        )}
 
         {/* LAUNCH_BEY 受信デバッグバナー */}
         {actionFlash && (
@@ -150,13 +128,6 @@ const Game = () => {
           </div>
         )}
 
-        <button
-          className="btn btn--secondary"
-          style={{ marginBottom: '12px', width: '100%', borderColor: 'rgba(139, 92, 246, 0.3)', color: '#d8b4fe' }}
-          onClick={triggerVibrate}
-        >
-          スマホを振動（テスト）
-        </button>
 
         <button
           className="btn btn--secondary game-page__exit"
