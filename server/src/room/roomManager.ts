@@ -101,7 +101,8 @@ class RoomManager {
     // Set 10s timeout
     const timeout = setTimeout(() => {
       const index = room.players.findIndex(p => p.id === player.id);
-      if (index !== -1 && room.players[index].isOffline) {
+      const p = room.players[index];
+      if (p && p.isOffline) {
         room.players.splice(index, 1);
         this.disconnectTimeouts.delete(player.id);
         onRemove(roomId, room.players);
