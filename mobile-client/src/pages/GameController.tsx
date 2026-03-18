@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, Navigate } from 'react-router-dom'
 import { useSensor } from '../hooks/useSensor'
 import { useSocket } from '../hooks/useSocket'
@@ -20,6 +20,7 @@ const GameController = () => {
   const latestSensorRef = useRef({ tiltX: 0, tiltY: 0, shakePower: 0 })
   const sendInputRef = useRef(sendInput)
   const audioContextRef = useRef<AudioContext | null>(null)
+  const [isInteractionPrimed, setIsInteractionPrimed] = useState(false)
 
   useEffect(() => {
     latestSensorRef.current = {
@@ -84,6 +85,14 @@ const GameController = () => {
     return () => clearInterval(interval)
   }, [isConnected])
 
+  const handlePrimeInteraction = useCallback(() => {
+    const ctx = ensureAudioContext()
+    if (!ctx) return
+    if (!isInteractionPrimed) {
+      setIsInteractionPrimed(true)
+    }
+  }, [ensureAudioContext, isInteractionPrimed])
+
   if (!roomId || !playerName) {
     return <Navigate to="/join" replace />
   }
@@ -137,8 +146,19 @@ const GameController = () => {
   return (
     <div
       className="flex flex-col min-h-screen bg-[#0a0a12] text-white select-none touch-none overflow-hidden"
-      onTouchStart={ensureAudioContext}
+      onTouchStart={handlePrimeInteraction}
+      onPointerDown={handlePrimeInteraction}
     >
+      {!isInteractionPrimed && (
+        <div className="fixed inset-0 z-30 bg-black/55 backdrop-blur-[2px] flex items-end justify-center pb-24 px-6">
+          <div className="w-full max-w-sm rounded-2xl border border-cyan-300/25 bg-slate-900/90 p-4 text-center shadow-[0_8px_30px_rgba(0,0,0,0.45)] animate-pulse">
+            <p className="text-[10px] text-cyan-300/70 tracking-[0.2em] uppercase mb-2">Sound Ready</p>
+            <p className="text-sm font-bold text-cyan-100">画面のどこかを1回タップして準備完了</p>
+            <p className="text-[11px] text-slate-300/80 mt-2">そのままゲーム操作でOKです</p>
+          </div>
+        </div>
+      )}
+
       {fxPulse > 0 && (
         <div
           key={fxPulse}
