@@ -27,8 +27,9 @@ const COLLISION_RINGOUT_RISK_GAIN = 0.24
 const OUTWARD_RINGOUT_RISK_GAIN = 0.18
 const RINGOUT_RISK_TRIGGER = 0.56
 const RINGOUT_MIN_OUTWARD_SPEED = 2.5
-const RINGOUT_SPEED_NORMALIZE = 6.5
-const RINGOUT_LOW_SPEED_TRIGGER_BONUS = 0.2
+const RINGOUT_SPEED_NORMALIZE = 7.6
+const RINGOUT_LOW_SPEED_TRIGGER_BONUS = 0.14
+const RINGOUT_SPEED_CURVE_EXPONENT = 1.4
 const BASE_DAMAGE = 4
 const IMPACT_MULTIPLIER = 0.8
 const BASE_ENERGY = 300
@@ -39,11 +40,6 @@ const OTEZUKI_ENERGY_FACTOR = 0.7
 // 1280x720基準の描画サイズ(外円半径約33px)をワールド座標へ合わせる
 const BEY_RADIUS = 72
 const HAPTIC_COLLISION_COOLDOWN_MS = 180
-const ATTACK_POINT_ORBIT_RADIUS = 54
-const ATTACK_POINT_TARGET_PADDING = 34
-const ATTACK_POINT_DAMAGE_MULTIPLIER = 2.35
-const ATTACK_POINT_KNOCKBACK_MULTIPLIER = 1.9
-const ATTACK_POINT_SELF_RECOIL = 0.3
 const ARENA_RENDER_RADIUS_SCALE = 0.34
 
 type BeyTypeKey = NonNullable<GameState['players'][number]['beyType']>
@@ -142,8 +138,6 @@ interface RuntimeBey {
   smoothedTiltY: number
   specialAttackTicks: number
   specialAttackBonusDamage: number
-  attackAngle: number
-  attackSpinRate: number
   launchTime?: number
   beyType: GameState['players'][0]['beyType']
 }
@@ -531,8 +525,6 @@ class GameScene extends Phaser.Scene {
         smoothedTiltY: 0,
         specialAttackTicks: 0,
         specialAttackBonusDamage: 0,
-        attackAngle: ((index * Math.PI) / 2) % (Math.PI * 2),
-        attackSpinRate: 0.18 + (index % 3) * 0.03,
         launchTime: undefined,
         beyType: player.beyType ?? 'balance',
       })
@@ -685,7 +677,7 @@ class GameScene extends Phaser.Scene {
         this.beySprites.set(beyState.id, sprite)
       }
 
-      sprite.applyState(this.projectX(beyState.x), this.projectY(beyState.y), beyState, this.unitToPixel)
+      sprite.applyState(this.projectX(beyState.x), this.projectY(beyState.y), beyState)
     })
   }
 
@@ -742,9 +734,6 @@ class GameScene extends Phaser.Scene {
           bey.vy += toCenterY * centerPull
         }
       }
-
-      const speed = Math.sqrt(bey.vx * bey.vx + bey.vy * bey.vy)
-      bey.attackAngle = (bey.attackAngle + bey.attackSpinRate * (0.8 + speed / 20)) % (Math.PI * 2)
 
       bey.x += bey.vx
       bey.y += bey.vy
@@ -839,43 +828,6 @@ class GameScene extends Phaser.Scene {
 
         const impact = knockbackStrength
 
-        const aAttackX = Math.cos(a.attackAngle)
-        const aAttackY = Math.sin(a.attackAngle)
-        const bAttackX = Math.cos(b.attackAngle)
-        const bAttackY = Math.sin(b.attackAngle)
-        const aPointX = a.x + aAttackX * ATTACK_POINT_ORBIT_RADIUS
-        const aPointY = a.y + aAttackY * ATTACK_POINT_ORBIT_RADIUS
-        const bPointX = b.x + bAttackX * ATTACK_POINT_ORBIT_RADIUS
-        const bPointY = b.y + bAttackY * ATTACK_POINT_ORBIT_RADIUS
-
-        const aToBdx = b.x - aPointX
-        const aToBdy = b.y - aPointY
-        const bToAdx = a.x - bPointX
-        const bToAdy = a.y - bPointY
-        const aCriticalHit =
-          aToBdx * aToBdx + aToBdy * aToBdy
-          <= (b.radius + ATTACK_POINT_TARGET_PADDING) * (b.radius + ATTACK_POINT_TARGET_PADDING)
-        const bCriticalHit =
-          bToAdx * bToAdx + bToAdy * bToAdy
-          <= (a.radius + ATTACK_POINT_TARGET_PADDING) * (a.radius + ATTACK_POINT_TARGET_PADDING)
-
-        if (aCriticalHit) {
-          const bonus = impact * (ATTACK_POINT_KNOCKBACK_MULTIPLIER - 1)
-            * aType.knockbackPowerMultiplier / bType.knockbackResistMultiplier
-          b.vx += bonus * nx
-          b.vy += bonus * ny
-          a.vx -= bonus * ATTACK_POINT_SELF_RECOIL * nx
-          a.vy -= bonus * ATTACK_POINT_SELF_RECOIL * ny
-        }
-        if (bCriticalHit) {
-          const bonus = impact * (ATTACK_POINT_KNOCKBACK_MULTIPLIER - 1)
-            * bType.knockbackPowerMultiplier / aType.knockbackResistMultiplier
-          a.vx -= bonus * nx
-          a.vy -= bonus * ny
-          b.vx += bonus * ATTACK_POINT_SELF_RECOIL * nx
-          b.vy += bonus * ATTACK_POINT_SELF_RECOIL * ny
-        }
-
         const impactNorm = Phaser.Math.Clamp((impact - MIN_COLLISION_KNOCKBACK) / 10, 0, 1)
         const aDist = Math.max(1, Math.sqrt(a.x * a.x + a.y * a.y))
         const bDist = Math.max(1, Math.sqrt(b.x * b.x + b.y * b.y))
@@ -887,12 +839,10 @@ class GameScene extends Phaser.Scene {
         const aRiskGain =
           (impactNorm * COLLISION_RINGOUT_RISK_GAIN
           + aOutwardNorm * OUTWARD_RINGOUT_RISK_GAIN
-          + (bCriticalHit ? 0.08 : 0)
           ) * aType.ringoutRiskGainMultiplier
         const bRiskGain =
           (impactNorm * COLLISION_RINGOUT_RISK_GAIN
           + bOutwardNorm * OUTWARD_RINGOUT_RISK_GAIN
-          + (aCriticalHit ? 0.08 : 0)
           ) * bType.ringoutRiskGainMultiplier
 
         a.ringoutRisk = Phaser.Math.Clamp(a.ringoutRisk + aRiskGain, 0, 1)
@@ -919,14 +869,12 @@ class GameScene extends Phaser.Scene {
           * (0.3 + 1.15 * (bForwardSpeed / totalForwardSpeed))
           * bType.damageDealtMultiplier
           * aType.damageTakenMultiplier
-          * (bCriticalHit ? ATTACK_POINT_DAMAGE_MULTIPLIER : 1)
           + bSpecialBonus
         const damageToB =
           baseImpactDamage
           * (0.3 + 1.15 * (aForwardSpeed / totalForwardSpeed))
           * aType.damageDealtMultiplier
           * bType.damageTakenMultiplier
-          * (aCriticalHit ? ATTACK_POINT_DAMAGE_MULTIPLIER : 1)
           + aSpecialBonus
 
         const hasSpecialHit = aSpecialBonus > 0 || bSpecialBonus > 0
@@ -990,7 +938,6 @@ class GameScene extends Phaser.Scene {
       vx: bey.vx,
       vy: bey.vy,
       energy: bey.energy,
-      attackAngle: bey.attackAngle,
       beyType: bey.beyType,
     }))
 
@@ -1055,7 +1002,9 @@ class GameScene extends Phaser.Scene {
         0,
         1,
       )
-      const ringoutRiskTriggerEffective = baseRingoutRiskTrigger + RINGOUT_LOW_SPEED_TRIGGER_BONUS * (1 - speedNorm)
+      // 速度依存は中速域で急に効きすぎないよう、カーブを緩やかにする
+      const speedCurve = Math.pow(speedNorm, RINGOUT_SPEED_CURVE_EXPONENT)
+      const ringoutRiskTriggerEffective = baseRingoutRiskTrigger + RINGOUT_LOW_SPEED_TRIGGER_BONUS * (1 - speedCurve)
 
       // 高速ほど要求リスクを下げ、低速ほど要求リスクを上げる
       if (bey.ringoutRisk >= ringoutRiskTriggerEffective) {
