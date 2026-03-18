@@ -7,10 +7,10 @@ type DeviceMotionEventWithPermission = typeof DeviceMotionEvent & {
 }
 
 const BEY_TYPES = [
-  { id: 'balance', name: 'バランス', desc: '標準的な性能', color: 'from-yellow-400 to-yellow-600' },
-  { id: 'power', name: 'パワー', desc: '攻撃力が高くダメージ大', color: 'from-orange-400 to-red-500' },
-  { id: 'defense', name: 'ディフェンス', desc: '相手を遠くに吹き飛ばす', color: 'from-blue-400 to-cyan-500' },
-  { id: 'weight', name: 'スタミナ', desc: '最大体力が20%多い', color: 'from-emerald-400 to-lime-500' },
+  { id: 'balance', name: 'バランス', desc: '癖が少ない万能型', color: 'from-yellow-400 to-yellow-600' },
+  { id: 'power', name: 'アタック', desc: '高火力だが場外リスク高', color: 'from-orange-400 to-red-500' },
+  { id: 'defense', name: 'ディフェンス', desc: '場外に強く被ダメが少ない', color: 'from-blue-400 to-cyan-500' },
+  { id: 'weight', name: 'スタミナ', desc: '長期戦向きで消耗しにくい', color: 'from-emerald-400 to-lime-500' },
 ] as const
 
 const requestSensorPermission = async (): Promise<boolean> => {
