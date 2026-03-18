@@ -6,7 +6,8 @@ class BeySprite {
   private readonly body: Phaser.GameObjects.Arc
   private readonly core: Phaser.GameObjects.Arc
   private readonly ring: Phaser.GameObjects.Arc
-  private readonly attackPoint: Phaser.GameObjects.Arc
+  private readonly spinLayer: Phaser.GameObjects.Container
+  private readonly spinDot: Phaser.GameObjects.Arc
   private readonly nameLabel: Phaser.GameObjects.Text
   private spinVelocity = 4
 
@@ -20,9 +21,14 @@ class BeySprite {
     this.ring = scene.add.circle(0, 0, 48 * pixelScale, palette.inner, 1)
     this.ring.setStrokeStyle(3 * pixelScale, 0xffffff, 0.4)
 
+    const bladeA = scene.add.rectangle(0, 0, 84 * pixelScale, 10 * pixelScale, 0xffffff, 0.26)
+    bladeA.setRotation(Math.PI * 0.16)
+    const bladeB = scene.add.rectangle(0, 0, 74 * pixelScale, 8 * pixelScale, 0xffffff, 0.22)
+    bladeB.setRotation(-Math.PI * 0.32)
+    this.spinDot = scene.add.circle(36 * pixelScale, 0, 7 * pixelScale, 0xffffff, 0.74)
+    this.spinLayer = scene.add.container(0, 0, [bladeA, bladeB, this.spinDot])
+
     this.core = scene.add.circle(0, 0, 18 * pixelScale, 0xf8fafc, 1)
-    this.attackPoint = scene.add.circle(0, -54 * pixelScale, 12 * pixelScale, 0xef4444, 1)
-    this.attackPoint.setStrokeStyle(4 * pixelScale, 0xfef2f2, 0.9)
 
     this.nameLabel = scene.add.text(0, -120 * pixelScale, playerName, {
       fontFamily: 'Segoe UI',
@@ -36,30 +42,32 @@ class BeySprite {
     this.root = scene.add.container(0, 0, [
       this.body,
       this.ring,
+      this.spinLayer,
       this.core,
-      this.attackPoint,
       this.nameLabel,
     ])
     this.root.setDepth(10)
   }
 
-  applyState(x: number, y: number, state: BeyState, pixelScale: number) {
+  applyState(x: number, y: number, state: BeyState) {
     this.root.setPosition(x, y)
 
     const speed = Math.sqrt(state.vx * state.vx + state.vy * state.vy)
-    this.spinVelocity = Math.max(1.5, speed * 0.9)
-    const attackAngle = state.attackAngle ?? 0
-    const orbitRadius = 54 * pixelScale // ATTACK_POINT_ORBIT_RADIUS = 54
-    this.attackPoint.setPosition(
-      Math.cos(attackAngle) * orbitRadius,
-      Math.sin(attackAngle) * orbitRadius,
-    )
+    const energyRatio = Phaser.Math.Clamp(state.energy / 100, 0, 1)
+    const targetSpin = Phaser.Math.Linear(1.2, 6.6, energyRatio) + Math.min(1.3, speed * 0.08)
+    this.spinVelocity = Phaser.Math.Linear(this.spinVelocity, targetSpin, 0.18)
+
+    this.ring.setAlpha(0.34 + energyRatio * 0.56)
+    this.spinLayer.setScale(0.9 + energyRatio * 0.14)
+    this.spinLayer.setAlpha(0.2 + energyRatio * 0.65)
+    this.spinDot.setAlpha(0.42 + energyRatio * 0.55)
 
     this.root.setAlpha(state.energy > 0 ? 1 : 0.35)
   }
 
   tick() {
-    this.ring.rotation += 0.05 * this.spinVelocity
+    this.ring.rotation += 0.033 * this.spinVelocity
+    this.spinLayer.rotation -= 0.052 * this.spinVelocity
   }
 
   destroy() {
