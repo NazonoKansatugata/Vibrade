@@ -41,9 +41,18 @@ const RoomCreate = () => {
 
       <main className="room-create__main">
         {!roomId ? (
-          <button className="btn btn--primary btn--large" onClick={handleCreateRoom}>
-            ルームを作成する
-          </button>
+          <div className="room-create__initial-actions">
+            <button className="btn btn--primary btn--large" onClick={handleCreateRoom}>
+              ルームを作成する
+            </button>
+            <button 
+              className="btn btn--secondary btn--large" 
+              onClick={() => navigate('/how-to-play')}
+              style={{ marginTop: '16px' }}
+            >
+              遊び方
+            </button>
+          </div>
         ) : (
           <>
             <div className="room-create__lobby">
