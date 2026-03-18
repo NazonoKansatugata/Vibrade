@@ -1,7 +1,7 @@
 /* ── Game page ──────────────────────────────── */
 .game-page {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 330px 1fr;
   height: 100vh;
   overflow: hidden;
   background: #0f172a;
@@ -21,9 +21,7 @@
 .game-page__canvas {
   position: relative;
   background: #0f172a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  overflow: hidden;
 }
 
 .game-canvas {

@@ -30,8 +30,7 @@ export const createPhaserGame = (
       pixelArt: false,
     },
     scale: {
-      mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
+      mode: Phaser.Scale.RESIZE,
       width: 1280,
       height: 720,
     },
