@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 
-type FeedbackIntent = 'default' | 'light' | 'impact' | 'launch';
+type FeedbackIntent = 'default' | 'light' | 'impact' | 'launch' | 'special';
 export type HapticMode = 'vibration-api' | 'none';
 
 // ── Intent → pattern helper ──────────────────────────────────────────────────
@@ -8,6 +8,7 @@ const getIntentPattern = (intent: FeedbackIntent, fallback: number[]): number[] 
   if (intent === 'light') return [40];
   if (intent === 'impact') return [45, 30, 55];
   if (intent === 'launch') return [60, 40, 100];
+  if (intent === 'special') return fallback.length > 0 ? fallback : [280, 120, 260, 120, 260, 120, 260];
   return fallback.length > 0 ? fallback : [120];
 };
 

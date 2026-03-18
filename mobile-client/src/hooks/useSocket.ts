@@ -3,7 +3,7 @@ import { controlSocket } from '../socket/controlSocket';
 import { ServerEvents } from '../socket/events';
 import { isHapticSupported, useHapticFeedback } from './useHapticFeedback';
 
-export type FeedbackFxIntent = 'impact' | 'launch';
+export type FeedbackFxIntent = 'impact' | 'launch' | 'special';
 
 export interface GameStateData {
   roomId: string;
@@ -89,9 +89,13 @@ export const useSocket = (roomId: string, playerName: string, beyType: string) =
     };
 
     const onVibrate = (data: { pattern?: number[] }) => {
-      setLastFxIntent('launch');
+      const pattern = data.pattern || [200, 100, 200];
+      const totalDuration = pattern.reduce((acc, ms) => acc + ms, 0);
+      const intent: FeedbackFxIntent = totalDuration >= 1000 ? 'special' : 'launch';
+
+      setLastFxIntent(intent);
       setFxPulse((prev) => prev + 1);
-      triggerFeedback(data.pattern || [200, 100, 200], 'launch');
+      triggerFeedback(pattern, intent === 'special' ? 'special' : 'launch');
     };
 
     socket.on('connect', onConnect);
@@ -112,7 +116,7 @@ export const useSocket = (roomId: string, playerName: string, beyType: string) =
       socket.off(ServerEvents.ERROR, onError);
       controlSocket.disconnect();
     };
-  }, [roomId, playerName, beyType, triggerFeedback]);
+  }, [roomId, playerName, beyType, playerId, triggerFeedback]);
 
   // Socket経由で入力を送信する関数
   const sendInput = (tiltX: number, tiltY: number, shakePower: number) => {

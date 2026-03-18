@@ -8,20 +8,25 @@ const FRICTION = 0.98
 const ENERGY_DECAY = 0.05
 const BASE_ACCEL = 0.9
 const BOOST_FORCE = 14.0
+const TILT_SMOOTHING = 0.28
 const WEAK_TILT_THRESHOLD = 0.18
 const CENTER_PULL_FORCE = 0.28
+const SPECIAL_ATTACK_MIN_ACTIVATION_SPEED = 7.5
+const SPECIAL_ATTACK_WINDOW_TICKS = 18
+const SPECIAL_ATTACK_BASE_BONUS_DAMAGE = 6.5
+const SPECIAL_ATTACK_MAX_BONUS_DAMAGE = 13
 const COLLISION_RESTITUTION = 0.82
 const COLLISION_KNOCKBACK_BOOST = 1.45
 const MIN_COLLISION_KNOCKBACK = 2.0
 const WALL_RESTITUTION = 0.86
-const OUTWARD_RISK_NORMALIZE_SPEED = 14.0
-const RINGOUT_RISK_DECAY = 0.055
-const COLLISION_RINGOUT_RISK_GAIN = 0.22
-const OUTWARD_RINGOUT_RISK_GAIN = 0.18
-const RINGOUT_RISK_TRIGGER = 0.52
+const OUTWARD_RISK_NORMALIZE_SPEED = 11.0
+const RINGOUT_RISK_DECAY = 0.04
+const COLLISION_RINGOUT_RISK_GAIN = 0.3
+const OUTWARD_RINGOUT_RISK_GAIN = 0.24
+const RINGOUT_RISK_TRIGGER = 0.4
 const BASE_DAMAGE = 4
 const IMPACT_MULTIPLIER = 0.8
-const BASE_ENERGY = 100
+const BASE_ENERGY = 300
 const ARMED_TIMEOUT_MS = 3000
 const COUNTDOWN_INTERVAL_MS = 1000
 const PENALTY_MIN_ENERGY_FACTOR = 0.3
@@ -73,7 +78,7 @@ const TYPE_TUNING: Record<BeyTypeKey, TypeTuning> = {
     controlAssistMultiplier: 0.95,
     maxEnergyMultiplier: 0.95,
     energyDecayMultiplier: 1.1,
-    damageDealtMultiplier: 1.22,
+    damageDealtMultiplier: 1,
     damageTakenMultiplier: 1.06,
     knockbackPowerMultiplier: 1.15,
     knockbackResistMultiplier: 0.92,
@@ -114,7 +119,7 @@ const TYPE_TUNING: Record<BeyTypeKey, TypeTuning> = {
 
 export interface CollisionEventPayload {
   playerIds: string[]
-  kind: 'bey' | 'wall'
+  kind: 'bey' | 'wall' | 'special'
 }
 
 interface RuntimeBey {
@@ -128,6 +133,10 @@ interface RuntimeBey {
   isActive: boolean
   radius: number
   ringoutRisk: number
+  smoothedTiltX: number
+  smoothedTiltY: number
+  specialAttackTicks: number
+  specialAttackBonusDamage: number
   attackAngle: number
   attackSpinRate: number
   launchTime?: number
@@ -499,6 +508,10 @@ class GameScene extends Phaser.Scene {
         isActive: true,
         radius: BEY_RADIUS,
         ringoutRisk: 0,
+        smoothedTiltX: 0,
+        smoothedTiltY: 0,
+        specialAttackTicks: 0,
+        specialAttackBonusDamage: 0,
         attackAngle: ((index * Math.PI) / 2) % (Math.PI * 2),
         attackSpinRate: 0.18 + (index % 3) * 0.03,
         launchTime: undefined,
@@ -559,6 +572,7 @@ class GameScene extends Phaser.Scene {
     const normalizedPower = Phaser.Math.Clamp(payload.power, 0, 1)
     const typeTuning = this.getTypeTuning(bey.beyType)
     const force = BOOST_FORCE * (0.45 + normalizedPower * 1.55) * typeTuning.launchForceMultiplier
+    const speedBeforeLaunch = Math.sqrt(bey.vx * bey.vx + bey.vy * bey.vy)
     
     if (this.status === 'armed') {
       // 準備中は何回振っても最後のタイミングが記録される（お手付き上書き可、ただしSHOOT後は確定）
@@ -571,6 +585,17 @@ class GameScene extends Phaser.Scene {
 
     bey.vx += dx * force
     bey.vy += dy * force
+
+    if (speedBeforeLaunch >= SPECIAL_ATTACK_MIN_ACTIVATION_SPEED) {
+      const speedScale = Phaser.Math.Clamp(speedBeforeLaunch / 16, 0.45, 1)
+      const bonusDamage = Phaser.Math.Linear(
+        SPECIAL_ATTACK_BASE_BONUS_DAMAGE,
+        SPECIAL_ATTACK_MAX_BONUS_DAMAGE,
+        Phaser.Math.Clamp((normalizedPower + speedScale) / 2, 0, 1),
+      )
+      bey.specialAttackTicks = Math.max(bey.specialAttackTicks, SPECIAL_ATTACK_WINDOW_TICKS)
+      bey.specialAttackBonusDamage = Math.max(bey.specialAttackBonusDamage, bonusDamage)
+    }
 
     // 最大速度制限は simulateTick で行われるが、瞬間的に超えるのは許容（あるいはここで軽くキャップ）
   }
@@ -671,11 +696,14 @@ class GameScene extends Phaser.Scene {
       const tiltMagnitude = Math.sqrt(tiltX * tiltX + tiltY * tiltY)
       const typeTuning = this.getTypeTuning(bey.beyType)
 
+      bey.smoothedTiltX += (tiltX - bey.smoothedTiltX) * TILT_SMOOTHING
+      bey.smoothedTiltY += (tiltY - bey.smoothedTiltY) * TILT_SMOOTHING
+
       const speedBeforeInput = Math.sqrt(bey.vx * bey.vx + bey.vy * bey.vy)
       const controlFactor = Math.max(0.3, 1 - bey.energy / 200)
       const steeringAssist = Phaser.Math.Clamp(0.45 + speedBeforeInput / 14, 0.45, 1)
-      bey.vx += tiltX * BASE_ACCEL * controlFactor * steeringAssist * typeTuning.controlAssistMultiplier
-      bey.vy += tiltY * BASE_ACCEL * controlFactor * steeringAssist * typeTuning.controlAssistMultiplier
+      bey.vx += bey.smoothedTiltX * BASE_ACCEL * controlFactor * steeringAssist * typeTuning.controlAssistMultiplier
+      bey.vy += bey.smoothedTiltY * BASE_ACCEL * controlFactor * steeringAssist * typeTuning.controlAssistMultiplier
 
       const weakTiltFactor = Phaser.Math.Clamp((WEAK_TILT_THRESHOLD - tiltMagnitude) / WEAK_TILT_THRESHOLD, 0, 1)
       if (weakTiltFactor > 0) {
@@ -698,6 +726,11 @@ class GameScene extends Phaser.Scene {
       bey.vx *= FRICTION
       bey.vy *= FRICTION
       bey.ringoutRisk = Math.max(0, bey.ringoutRisk - RINGOUT_RISK_DECAY * typeTuning.ringoutRiskDecayMultiplier)
+      if (bey.specialAttackTicks > 0) {
+        bey.specialAttackTicks -= 1
+      } else {
+        bey.specialAttackBonusDamage = 0
+      }
 
       bey.energy = Math.max(0, bey.energy - ENERGY_DECAY * typeTuning.energyDecayMultiplier)
 
@@ -779,8 +812,7 @@ class GameScene extends Phaser.Scene {
         b.x += nx * correction
         b.y += ny * correction
 
-          const impact = knockbackStrength
-          this.emitCollisionHaptic([a.playerId, b.playerId], 'bey')
+        const impact = knockbackStrength
 
         const aAttackX = Math.cos(a.attackAngle)
         const aAttackY = Math.sin(a.attackAngle)
@@ -844,7 +876,18 @@ class GameScene extends Phaser.Scene {
         const aForwardSpeed = Math.max(0, a.vx * nx + a.vy * ny)
         const bForwardSpeed = Math.max(0, -(b.vx * nx + b.vy * ny))
         const totalForwardSpeed = Math.max(0.2, aForwardSpeed + bForwardSpeed)
+        const aForwardShare = aForwardSpeed / totalForwardSpeed
+        const bForwardShare = bForwardSpeed / totalForwardSpeed
         const baseImpactDamage = BASE_DAMAGE + impact * IMPACT_MULTIPLIER
+
+        const aSpecialBonus =
+          a.specialAttackTicks > 0
+            ? a.specialAttackBonusDamage * (0.35 + aForwardShare * 0.65)
+            : 0
+        const bSpecialBonus =
+          b.specialAttackTicks > 0
+            ? b.specialAttackBonusDamage * (0.35 + bForwardShare * 0.65)
+            : 0
 
         const damageToA =
           baseImpactDamage
@@ -852,12 +895,26 @@ class GameScene extends Phaser.Scene {
           * bType.damageDealtMultiplier
           * aType.damageTakenMultiplier
           * (bCriticalHit ? ATTACK_POINT_DAMAGE_MULTIPLIER : 1)
+          + bSpecialBonus
         const damageToB =
           baseImpactDamage
           * (0.3 + 1.15 * (aForwardSpeed / totalForwardSpeed))
           * aType.damageDealtMultiplier
           * bType.damageTakenMultiplier
           * (aCriticalHit ? ATTACK_POINT_DAMAGE_MULTIPLIER : 1)
+          + aSpecialBonus
+
+        const hasSpecialHit = aSpecialBonus > 0 || bSpecialBonus > 0
+        this.emitCollisionHaptic([a.playerId, b.playerId], hasSpecialHit ? 'special' : 'bey')
+
+        if (aSpecialBonus > 0) {
+          a.specialAttackTicks = 0
+          a.specialAttackBonusDamage = 0
+        }
+        if (bSpecialBonus > 0) {
+          b.specialAttackTicks = 0
+          b.specialAttackBonusDamage = 0
+        }
 
         a.energy = Math.max(0, a.energy - damageToA)
         b.energy = Math.max(0, b.energy - damageToB)
@@ -963,7 +1020,7 @@ class GameScene extends Phaser.Scene {
     const ringoutRiskTrigger = RINGOUT_RISK_TRIGGER * typeTuning.ringoutRiskTriggerMultiplier
 
     // 衝突で蓄積したリスクが十分高く、壁へ押し出される方向なら場外
-    if (bey.ringoutRisk >= ringoutRiskTrigger && outwardSpeed > 0.35) {
+    if (bey.ringoutRisk >= ringoutRiskTrigger && outwardSpeed > 0.18) {
       return 'ringout'
     }
 
@@ -977,7 +1034,7 @@ class GameScene extends Phaser.Scene {
     }
 
     // 壁反射で踏みとどまった時は、場外リスクを少しだけ下げる
-    bey.ringoutRisk = Math.max(0, bey.ringoutRisk - 0.12 * typeTuning.wallRiskRecoveryBonus)
+    bey.ringoutRisk = Math.max(0, bey.ringoutRisk - 0.06 * typeTuning.wallRiskRecoveryBonus)
 
     return 'wall'
   }

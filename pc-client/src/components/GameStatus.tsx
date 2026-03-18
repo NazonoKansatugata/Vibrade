@@ -9,6 +9,7 @@ interface GameStatusProps {
 const GameStatus = ({ gameState, canRetry = false, onRetry }: GameStatusProps) => {
   const playerCount = gameState?.players.length ?? 0
   const activeBeys = gameState?.beys.filter((b) => b.energy > 0).length ?? 0
+  const displayMaxEnergy = 360
 
   return (
     <div className="game-status">
@@ -43,7 +44,7 @@ const GameStatus = ({ gameState, canRetry = false, onRetry }: GameStatusProps) =
           {gameState.beys.map((bey) => {
             const player = gameState.players.find((p) => p.id === bey.playerId)
             const currentEnergy = Math.round(bey.energy)
-            const barPct = Math.min(100, Math.round((bey.energy / 100) * 100))
+            const barPct = Math.min(100, Math.round((bey.energy / displayMaxEnergy) * 100))
             return (
               <li key={bey.id} className="game-status__bey-row">
                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '4px' }}>
@@ -55,7 +56,12 @@ const GameStatus = ({ gameState, canRetry = false, onRetry }: GameStatusProps) =
                     className="game-status__energy-fill"
                     style={{ 
                       width: `${barPct}%`,
-                      backgroundColor: bey.energy > 100 ? '#10b981' : bey.energy > 30 ? '#3b82f6' : '#ef4444'
+                      backgroundColor:
+                        bey.energy > displayMaxEnergy * 0.66
+                          ? '#10b981'
+                          : bey.energy > displayMaxEnergy * 0.25
+                            ? '#3b82f6'
+                            : '#ef4444'
                     }}
                   />
                 </div>
