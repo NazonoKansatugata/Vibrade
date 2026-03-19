@@ -13,7 +13,7 @@ const WEAK_TILT_THRESHOLD = 0.18
 const CENTER_PULL_FORCE = 0.35
 const LOW_SPEED_CENTER_PULL_THRESHOLD = 3.2
 const LOW_SPEED_CENTER_PULL_BONUS = 0.9
-const SPECIAL_ATTACK_MIN_ACTIVATION_SPEED = 9.0
+const SPECIAL_ATTACK_MIN_ACTIVATION_SPEED = 10.0
 const SPECIAL_ATTACK_WINDOW_TICKS = 30 // 1秒間に変更
 const SPECIAL_ATTACK_BASE_BONUS_DAMAGE = 6.5
 const SPECIAL_ATTACK_MAX_BONUS_DAMAGE = 13
@@ -35,8 +35,10 @@ const IMPACT_MULTIPLIER = 0.8
 const BASE_ENERGY = 300
 const ARMED_TIMEOUT_MS = 3000
 const COUNTDOWN_INTERVAL_MS = 1000
-const PENALTY_MIN_ENERGY_FACTOR = 0.3
-const OTEZUKI_ENERGY_FACTOR = 0.7
+const PENALTY_MIN_ENERGY_FACTOR = 0.75
+const OTEZUKI_ENERGY_FACTOR = 0.9
+const SUCCESS_BUFF_POOL_PER_PLAYER = 0.08
+const SUCCESS_BUFF_CAP_PER_PLAYER = 0.12
 // 1280x720基準の描画サイズ(外円半径約33px)をワールド座標へ合わせる
 const BEY_RADIUS = 72
 const HAPTIC_COLLISION_COOLDOWN_MS = 180
@@ -90,9 +92,9 @@ const TYPE_TUNING: Record<BeyTypeKey, TypeTuning> = {
   },
   defense: {
     launchForceMultiplier: 0.9,
-    controlAssistMultiplier: 0.92,
+    controlAssistMultiplier: 1.1,
     maxEnergyMultiplier: 1.06,
-    energyDecayMultiplier: 1.24,
+    energyDecayMultiplier: 1.1,
     damageDealtMultiplier: 0.9,
     damageTakenMultiplier: 0.82,
     knockbackPowerMultiplier: 0.92,
@@ -442,7 +444,7 @@ class GameScene extends Phaser.Scene {
 
     const totalPlayers = this.runtimeBeys.size
     const maxBuffPlayers = Math.ceil(totalPlayers / 2)
-    let remainingBuffPool = totalPlayers * 0.25
+    let remainingBuffPool = totalPlayers * SUCCESS_BUFF_POOL_PER_PLAYER
 
     // 成功したプレイヤー（指示後かつタイムアウト前）を時間順にソート
     const successfulPlayers = Array.from(this.runtimeBeys.values())
@@ -465,7 +467,7 @@ class GameScene extends Phaser.Scene {
         let energyFactor = 1.0
 
         if (rank > 0 && rank <= maxBuffPlayers && remainingBuffPool > 0) {
-          const buff = Math.min(0.5, remainingBuffPool)
+          const buff = Math.min(SUCCESS_BUFF_CAP_PER_PLAYER, remainingBuffPool)
           energyFactor += buff
           remainingBuffPool -= buff
         }
