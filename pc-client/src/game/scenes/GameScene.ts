@@ -13,7 +13,7 @@ const WEAK_TILT_THRESHOLD = 0.18
 const CENTER_PULL_FORCE = 0.35
 const LOW_SPEED_CENTER_PULL_THRESHOLD = 3.2
 const LOW_SPEED_CENTER_PULL_BONUS = 0.9
-const SPECIAL_ATTACK_MIN_ACTIVATION_SPEED = 7.5
+const SPECIAL_ATTACK_MIN_ACTIVATION_SPEED = 9.0
 const SPECIAL_ATTACK_WINDOW_TICKS = 30 // 1秒間に変更
 const SPECIAL_ATTACK_BASE_BONUS_DAMAGE = 6.5
 const SPECIAL_ATTACK_MAX_BONUS_DAMAGE = 13
@@ -92,7 +92,7 @@ const TYPE_TUNING: Record<BeyTypeKey, TypeTuning> = {
     launchForceMultiplier: 0.9,
     controlAssistMultiplier: 0.92,
     maxEnergyMultiplier: 1.06,
-    energyDecayMultiplier: 0.96,
+    energyDecayMultiplier: 1.24,
     damageDealtMultiplier: 0.9,
     damageTakenMultiplier: 0.82,
     knockbackPowerMultiplier: 0.92,
@@ -864,20 +864,30 @@ class GameScene extends Phaser.Scene {
             ? b.specialAttackBonusDamage * (0.35 + bForwardShare * 0.65)
             : 0
 
-        const damageToA =
+        const damageToABase =
           baseImpactDamage
           * (0.3 + 1.15 * (bForwardSpeed / totalForwardSpeed))
           * bType.damageDealtMultiplier
           * aType.damageTakenMultiplier
           + bSpecialBonus
-        const damageToB =
+        const damageToBBase =
           baseImpactDamage
           * (0.3 + 1.15 * (aForwardSpeed / totalForwardSpeed))
           * aType.damageDealtMultiplier
           * bType.damageTakenMultiplier
           + aSpecialBonus
 
+        let damageToA = damageToABase
+        let damageToB = damageToBBase
+
         const hasSpecialHit = aSpecialBonus > 0 || bSpecialBonus > 0
+        if (hasSpecialHit) {
+          if (aForwardSpeed > bForwardSpeed) {
+            damageToA = 0
+          } else if (bForwardSpeed > aForwardSpeed) {
+            damageToB = 0
+          }
+        }
         if (hasSpecialHit) {
           this.specialAttackFlashTicks = 30 // 約1秒間（33ms * 30）
         }
